@@ -81,7 +81,7 @@ var execute = (cmd, args, done) => {
 
 module.exports = function exec(options){
 
-    this.add({role: 'exec', cmd: 'whatweb'}, function (msg, respond) {
+    this.add({role: 'exec', cmd: 'whatweb'}, function (msg, done) {
 	const path = `/tmp/reports/${msg.host}.json`;
 	if(fs.existsSync(path)){
 	    fs.unlinkSync(path, console.log);
@@ -89,11 +89,11 @@ module.exports = function exec(options){
 	execute('whatweb', [`--log-json=${path}`, msg.host], (code, stdout, stderr) => {
 	    // var list = seneca.act('role:entity,cmd:list',{name:'whatweb'});
 	    // console.log('Entities:', list);
-	    respond(null, {result: code});
+	    done(null, {result: code});
 	});
     });
 
-    this.add({role: 'validate', cmd: 'email'}, function (msg, respond) {
+    this.add({role: 'validate', cmd: 'email'}, function (msg, done) {
 	const email = 'webmaster@' + msg.host;
 	const params = {
 	    access_key:process.env.APILAYER_KEY,
@@ -104,7 +104,7 @@ module.exports = function exec(options){
 
 	var entity = seneca.make$('email');
 	if(entity.list({email: email})){
-	    respond(null, {status: 'OK', cached: entity});
+	    done(null, {status: 'OK', cached: entity});
 	} else {
 	    request('http://apilayer.net/api/check?' + qs.stringify(params), (err, response, body) => {
 		entity
@@ -118,6 +118,6 @@ module.exports = function exec(options){
 	    	    });
 	    });
 	}
-	respond(null, {status: 'OK'});
+	done(null, {status: 'OK'});
     });
 };
