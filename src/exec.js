@@ -22,14 +22,6 @@ const wrap = (command, args) => {
     }
 };
 
-const wrapPath = (filePath) => {
-    if(process.env.NODE_EVN === 'production'){
-	return filePath;
-    } else {
-	return filePath;
-    }
-};
-
 const pathForHost = (host, suffix) => {
     return `/tmp/reports/${host}${suffix}`;
 };
@@ -41,7 +33,14 @@ const saveLogger = (err, object) => {
     console.log(`Saved: ${object}`);
 };
 
-var execute = (cmd, args, done) => {
+const beforeExecute = (msg) => {
+    const path = `/tmp/reports/${msg.host}-${msg.cmd}.json`;
+    if(fs.existsSync(path)){
+	fs.unlinkSync(path, console.log);
+    }
+    return path;
+}
+const execute = (cmd, args, done) => {
     const stdout = [], stderr = [];
 
     const w = wrap(cmd, args)
@@ -64,12 +63,12 @@ var execute = (cmd, args, done) => {
 	if(_.isFunction(done)){
 	    var fs = require('fs')
 	    , host = args[args.length - 1];
-	    fs.writeFileSync(wrapPath(pathForHost(host,'.stdout.txt')), stdout);
-	    fs.writeFileSync(wrapPath(pathForHost(host,'.stderr.txt')), stderr);
-	    var jsonObj = JSON.parse(fs.readFileSync(wrapPath(pathForHost(host,'.json')), 'utf8'));
+	    fs.writeFileSync(pathForHost(host,`-${cmd}.stdout.txt`), stdout);
+	    fs.writeFileSync(pathForHost(host,`-${cmd}.stderr.txt`), stderr);
+	    var jsonObj = JSON.parse(fs.readFileSync(pathForHost(host,`-${cmd}.json`), 'utf8'));
 	    seneca
 		.make$(cmd)
-		.data$({date:Date.now(), host:host, json: jsonObj})
+		.data$(_.extend({date:new Date(), host:host}, _.isArray(jsonObj)?jsonObj[0]:jsonObj))
 		.save$(saveLogger);
 	    // check if it's sync or async
 	    done(code, stdout, stderr);
@@ -82,23 +81,14 @@ var execute = (cmd, args, done) => {
 module.exports = function exec(options){
 
     this.add({role: 'exec', cmd: 'whatweb'}, function (msg, done) {
-	const path = `/tmp/reports/${msg.host}.json`;
-	if(fs.existsSync(path)){
-	    fs.unlinkSync(path, console.log);
-	}
+	const path = beforeExecute(msg);
 	execute('whatweb', [`--log-json=${path}`, msg.host], (code, stdout, stderr) => {
-	    // var list = seneca.act('role:entity,cmd:list',{name:'whatweb'});
-	    // console.log('Entities:', list);
 	    done(null, {result: code});
 	});
     });
 
     this.add({role: 'exec', cmd: 'nmap'}, function (msg, done) {
-	const path = `/tmp/reports/${msg.host}.json`;
-	if(fs.existsSync(path)){
-	    fs.unlinkSync(path, console.log);
-	}
-	
+	const path = beforeExecute(msg);
 	execute('nmap', ['--script=vuln', msg.host], (code, stdout, stderr) => {
 	    done(null, {result: code});
 	});

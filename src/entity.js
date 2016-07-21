@@ -1,6 +1,4 @@
 const _ = require('lodash')
-, spawn = require('child_process').spawn
-, async = require('async')
 , seneca = require('seneca')()
       .use('entity')
       .use('seneca-web')
@@ -11,7 +9,6 @@ const _ = require('lodash')
     	  port: 27017,
     	  options: {}
       });
-
 
 module.exports = function(options){
     this.add({role:'entity', cmd:'list'}, function (msg, done){
