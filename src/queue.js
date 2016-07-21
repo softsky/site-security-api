@@ -3,16 +3,13 @@ const _ = require('lodash')
 , async = require('async')
 , seneca = require('seneca')()
 	  .use('entity')
-	  .use('redis-store', {
-	      uri: 'redis://localhost:6379',
-	      options: {}
-	  })
 	  .use('seneca-web');
 
 module.exports = function exec(options){
     const self = this;
 
     this.add({role:'queue', cmd:'add'}, function (msg, done){
+	
 	const entity = seneca
 	      .make$(msg.name)
 	      .data$(msg)

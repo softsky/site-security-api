@@ -93,31 +93,15 @@ module.exports = function exec(options){
 	});
     });
 
-    this.add({role: 'validate', cmd: 'email'}, function (msg, done) {
-	const email = 'webmaster@' + msg.host;
-	const params = {
-	    access_key:process.env.APILAYER_KEY,
-	    smtp:1,
-	    format:1,
-	    email:email
-	};
-
-	var entity = seneca.make$('email');
-	if(entity.list({email: email})){
-	    done(null, {status: 'OK', cached: entity});
-	} else {
-	    request('http://apilayer.net/api/check?' + qs.stringify(params), (err, response, body) => {
-		entity
-	    	    .data$(response)
-	    	    .save$((err, obj) => {
-	    		if(err){
-	    		    throw new Error(err);
-	    		} else {
-	    		    console.log(`Saved: ${obj}`);
-	    		}
-	    	    });
-	    });
+    this.add({role: 'exec', cmd: 'nmap'}, function (msg, done) {
+	const path = `/tmp/reports/${msg.host}.json`;
+	if(fs.existsSync(path)){
+	    fs.unlinkSync(path, console.log);
 	}
-	done(null, {status: 'OK'});
+	
+	execute('nmap', ['--script=vuln', msg.host], (code, stdout, stderr) => {
+	    done(null, {result: code});
+	});
     });
+    
 };
