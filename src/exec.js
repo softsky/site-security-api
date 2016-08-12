@@ -6,92 +6,140 @@ const _ = require('lodash')
 , qs = require('querystring')
 , seneca = require('seneca')()
 	  .use('entity')
-	  .use('mongo-store', {
-    	      name: 'security',
-	      db: 'security',
-    	      host: '127.0.0.1',
-    	      port: 27017,
-    	      options: {}
-	  });
+	  .use('src/import')
+	  .use('run', {
+	      batch: {
+		  'mkdir': {
+		      command: 'mkdir'
+		  },
+		  'whatweb': {
+		      command: 'whatweb'
+		  },
+		  'nmap': {
+		      command: 'nmap',
+		      timeout: 2 * 24 * 3600 * 1000
+		  },
+		  'nikto': {
+		      
+		  }		  
+	      }
+	  })
+	  .use('mongo-store', require('./options.json').mongo),
+      xml2js = require('xml2js');
 
-const wrap = (command, args) => {
-    if(process.env.NODE_EVN === 'production'){
-	return [command, args];
+
+const wrap = (spec) => {
+    if(process.env.NODE_ENV === 'production'){
+	return spec;
     } else {
-	return ['docker', ['exec', '-t', 'zen_davinci'].concat([command]).concat(args)];
+	return {
+	    command: 'docker',
+	    args: ['exec', '-t', 'zen_davinci', spec.command].concat(spec.args)
+	};
     }
 };
 
-const pathForHost = (host, suffix) => {
-    return `/tmp/reports/${host}${suffix}`;
-};
+module.exports = function api(options){
 
-const saveLogger = (err, object) => {
-    if(err){
-	throw new Error(err);
-    }
-    console.log(`Saved: ${object}`);
-};
+    this.add({role: 'exec', cmd:'whatweb'}, function (msg, done) {
+	const filePath = `/tmp/reports/${msg.host}/${msg.cmd}.xml`;
 
-const beforeExecute = (msg) => {
-    const path = `/tmp/reports/${msg.host}-${msg.cmd}.json`;
-    if(fs.existsSync(path)){
-	fs.unlinkSync(path, console.log);
-    }
-    return path;
-}
-const execute = (cmd, args, done) => {
-    const stdout = [], stderr = [];
-
-    const w = wrap(cmd, args)
-    , wrapped = {cmd: w[0], args: w.slice(1)}
-    , command = spawn(wrapped.cmd, wrapped.args[0]);
-
-    command.stdout.on('data', (data) => {
-	// getting buffer in `data`
-	const str = data.toString('utf-8');
-	stdout.push(str);
-    });
-
-    command.stderr.on('data', (data) => {
-	//getting buffer in `data`
-	const str = data.toString('utf-8');
-	stderr.push(str);
-    });
-
-    command.on('close', (code) => {
-	if(_.isFunction(done)){
-	    var fs = require('fs')
-	    , host = args[args.length - 1];
-	    fs.writeFileSync(pathForHost(host,`-${cmd}.stdout.txt`), stdout);
-	    fs.writeFileSync(pathForHost(host,`-${cmd}.stderr.txt`), stderr);
-	    var jsonObj = JSON.parse(fs.readFileSync(pathForHost(host,`-${cmd}.json`), 'utf8'));
-	    seneca
-		.make$(cmd)
-		.data$(_.extend({date:new Date(), host:host}, _.isArray(jsonObj)?jsonObj[0]:jsonObj))
-		.save$(saveLogger);
-	    // check if it's sync or async
-	    done(code, stdout, stderr);
-	} else {
-	    console.log(`child process exited with code ${code}`);
-	}
-    });
-};
-
-module.exports = function exec(options){
-
-    this.add({role: 'exec', cmd: 'whatweb'}, function (msg, done) {
-	const path = beforeExecute(msg);
-	execute('whatweb', [`--log-json=${path}`, msg.host], (code, stdout, stderr) => {
-	    done(null, {result: code});
+	const spec = wrap({
+	    cwd: '/tmp/reports',
+	    command: msg.cmd,
+	    args: [`--log-xml=${filePath}`, msg.host]
 	});
+	done(null, spec);
     });
 
-    this.add({role: 'exec', cmd: 'nmap'}, function (msg, done) {
-	const path = beforeExecute(msg);
-	execute('nmap', ['--script=vuln', msg.host], (code, stdout, stderr) => {
-	    done(null, {result: code});
+    this.add({role:'exec', cmd:'nmap'}, function (msg, done) {
+	const filePath = `/tmp/reports/${msg.host}/${msg.cmd}.xml`;
+
+	const spec = wrap({
+	    cwd: '/tmp/reports/${msg.host}',
+	    command: 'nmap',
+	    args: ['-oX',filePath, '--script','vuln', '-Pn', msg.host]
 	});
+	done(null, spec);
+    });
+        
+
+    // this.sub('role:run,info:report',function(args,done){
+    // 	fs.readFile(`/tmp/reports/${args.host}/whatweb.xml`, function(err, data) {
+    // 	    var parser = new xml2js.Parser({attrkey:'properties$'});
+    // 	    if(err){
+    // 		seneca.log.error(err);
+    // 		done(null, {error: JSON.stringify(err), result:JSON.stringify(data)});
+    // 	    } else {
+    // 		parser.parseString(data, function (err, result) {
+    // 		    if(err){
+    // 			seneca.log.error(err);
+    // 			done(null, {error: `Can\'t parse JSON for ${args.host}`});
+    // 		    } else {
+    // 			var instance = seneca
+    // 				.make$('nmaprun')
+    // 				.data$({nmaprun: result['nmaprun']})
+    // 				.save$((err, obj) => {
+    // 			    if(err){
+    // 				seneca.log.error(err);
+    // 				done(null, {error: JSON.stringify(err), result:JSON.stringify(data)});
+    // 			    } else {
+    // 				done(null, {status:'OK'});
+    // 			    }
+    // 			});
+    // 		    };
+    // 		});
+    // 	    };
+    // 	});
+    // });
+
+    var q = [];
+
+    this.wrap("role:exec", function(msg, respond) {
+    	if (q.length < process.env.EXEC_QUEUE_LIMIT || 50) {
+    	    var func = function(err, spec) {
+    		if (err){
+    		    respond(err);
+    		} else {
+    		    var old = q.pop() || {self:this, msg:msg};
+    		    if(old){
+			const filePath = `/tmp/reports/${old.msg.host}/${old.msg.cmd}.xml`;			
+			// if(fs.existsSync(filePath)){
+			//     seneca.act(_.extend(msg, {role:'import'}), respond);
+			// } else 
+			{
+			    seneca.act({role:'run', cmd:'execute', name:'mkdir', spec:{
+				args: ['-p', `/tmp/reports/${old.msg.host}`]
+			    }}, (err, result) => {
+				seneca.log.info('Running', spec.command, ' with args ', spec.args);
+				var stdout = [], stderr = [];
+				var proc = spawn(spec.command, spec.args);
+				proc.stdout.on('data', stdout.push.bind(stdout));
+				proc.stderr.on('data', stderr.push.bind(stderr));
+				proc.on('close', (ret) => {
+				    console.log('Process finished:', ret);
+				    seneca.act({role:'import', cmd:msg.cmd, host: old.msg.host});
+				});				
+			    });
+			    respond(null, {status:'scheduled'});			    
+			}
+    		    }
+    		}
+    	    };
+    	    this.prior(msg, func);
+    	} else {
+    	    q.push({self:this, msg:msg});
+    	};
     });
     
+    // this.add('init:api', function (msg, respond) {
+    // 	this.act('role:web',{use:{
+    // 	    prefix: '/api/exec',
+    // 	    pin:    'role:exec,cmd:*',
+    // 	    map: {
+    // 		nmap: { GET:true, suffix:'/:host' },
+    // 		whatweb: { GET:true, suffix:'/:host' }
+    // 	    }
+    // 	}}, respond);
+    // });
 };
