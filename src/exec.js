@@ -24,17 +24,18 @@ const _ = require('lodash')
 		  }		  
 	      }
 	  })
-	  .use('mongo-store', require('./options.json').mongo),
+      .use('mongo-store',  {uri: 'mongo://' + process.env.MONGODB + '/security' }),
       xml2js = require('xml2js');
 
 
 const wrap = (spec) => {
+    var arr = ['tmux', 'attach', '\;', 'new-window', spec.command].concat(spec.args);
     if(process.env.NODE_ENV === 'production'){
-	return spec;
+	return arr;
     } else {
 	return {
 	    command: 'docker',
-	    args: ['exec', '-t', 'zen_davinci', spec.command].concat(spec.args)
+	    args: ['exec', '-t', process.env.DOCKER_CONTAINER_NAME].concat(arr)
 	};
     }
 };
@@ -132,14 +133,14 @@ module.exports = function api(options){
     	};
     });
     
-    // this.add('init:api', function (msg, respond) {
-    // 	this.act('role:web',{use:{
-    // 	    prefix: '/api/exec',
-    // 	    pin:    'role:exec,cmd:*',
-    // 	    map: {
-    // 		nmap: { GET:true, suffix:'/:host' },
-    // 		whatweb: { GET:true, suffix:'/:host' }
-    // 	    }
-    // 	}}, respond);
-    // });
+    this.add('init:api', function (msg, respond) {
+    	this.act('role:web',{use:{
+    	    prefix: '/api/exec',
+    	    pin:    'role:exec,cmd:*',
+    	    map: {
+    		nmap: { GET:true, suffix:'/:host' },
+    		whatweb: { GET:true, suffix:'/:host' }
+    	    }
+    	}}, respond);
+    });
 };

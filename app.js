@@ -1,8 +1,8 @@
 var fs = require('fs');
 var http = require('http');
 var https = require('https');
-var privateKey  = fs.readFileSync('sslcert/server.key', 'utf8');
-var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
+var privateKey  = fs.readFileSync(__dirname + '/sslcert/server.key', 'utf8');
+var certificate = fs.readFileSync(__dirname + '/sslcert/server.crt', 'utf8');
 
 var seneca = require('seneca')()
 // .use('src/queue')
@@ -29,8 +29,8 @@ var httpsServer = https.createServer(credentials, app);
 
 // // This is how you integrate Seneca with Express
 //app.listen(process.env.NODE_PORT || 3000);
-httpServer.listen(process.env.NODE_PORT || 3000);
-httpsServer.listen((process.env.NODE_PORT || 3000) + 443);
+httpServer.listen(parseInt(process.env.NODE_PORT) || 3000);
+httpsServer.listen((parseInt(process.env.NODE_PORT) || 3000) + 443);
 
 
 

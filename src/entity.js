@@ -2,7 +2,7 @@ const _ = require('lodash')
 , ObjectId = require('mongodb').ObjectID
 , seneca = require('seneca')()
       .use('entity')
-      .use('mongo-store', require('./options.json').mongo);
+      .use('mongo-store',  {uri: 'mongo://' + process.env.MONGODB + '/security' })
 
 
 module.exports = function api(options){
@@ -43,7 +43,7 @@ module.exports = function api(options){
     this.add('init:api', function (msg, respond) {
 	this.log.info('init:api called');
 	this.act('role:web',{use:{
-    	    prefix: '/entity',
+    	    prefix: '/api/entity',
     	    pin:    'role:entity,cmd:*',
     	    map: {
     		save: { GET:true, POST: true, suffix:'/:name$' },
