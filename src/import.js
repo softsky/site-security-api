@@ -1,15 +1,13 @@
-const _ = require('lodash')
-, async = require('async')
-, fs = require('fs')
-, xml2js = require('xml2js')
-, seneca = require('seneca')()
-	  .use('entity')
-          .use('mongo-store', require('./options.json').mongo);
-
 module.exports = function(options){
+    const _ = require('lodash')
+    , async = require('async')
+    , fs = require('fs')
+    , xml2js = require('xml2js')
+    , seneca = require('seneca')()
+	      .use('entity');
+
     this.add("role:import", (msg, done) => {
-    	seneca.log.info("+++++++++++++++");
-    	fs.readFile(`/tmp/reports/${msg.host}/${msg.cmd}.xml`, function(err, data) {
+    	fs.readFile(`${options.report_path}/${msg.cmd}.xml`, function(err, data) {
     	    if(err){
     		seneca.log.error(err);
     		done(null, {error: err});

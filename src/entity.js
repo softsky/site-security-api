@@ -1,11 +1,11 @@
+module.exports = function api(options){
 const _ = require('lodash')
 , ObjectId = require('mongodb').ObjectID
 , seneca = require('seneca')()
       .use('entity')
-      .use('mongo-store',  {uri: 'mongo://' + process.env.MONGODB + '/security' })
+      .use('mongo-store',  options.mongo)
 
 
-module.exports = function api(options){
 
     this.add({role:'entity', cmd:'save'}, function (msg, done){
 	var name$ = msg.name$;

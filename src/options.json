@@ -2,6 +2,7 @@
     "mongo": {
     	"name": "security",
 	"db": "security",
+	"host":"localhost",
     	"port": 27017,
     	"options": {}
     }
