@@ -48,5 +48,14 @@ EXPOSE 3001
 
 COPY copyables /
 
-CMD ["bash", "/init.sh"]
+# List of all ENV variables we're intent to use
+ENV SCAN_DOMAIN none
+ENV APILAYER_KEY none
+ENV DOCKER_CONTAINER_NAME none
+
+# Seems other forms of CMD does not accept ENV variable
+
+CMD script -q -c "tmux start-server \; set-option -g default-terminal xterm \;\ 
+    	      	 new -s $(echo ${SCAN_DOMAIN}|sed -e s/\\\./_/g) \;\ 
+		 new-window bash -c \"node /site-security/app.js\"" /dev/null
     
