@@ -15,6 +15,7 @@ const wrap = (spec) => {
 
 module.exports = function api(options){
     const _ = require('lodash')
+    , async = require('async')
     , spawn = require('child_process').spawn
     , fs = require('fs')
     , dotenv = require('dotenv') //.configure()
@@ -23,21 +24,7 @@ module.exports = function api(options){
     , seneca = require('seneca')()
 	  .use('entity')
 	  .use('src/import', options)
-	  .use('run', {
-	      batch: {
-		  'whatweb': {
-		      command: 'whatweb'		      
-		  },
-		  'nmap': {
-		      command: 'nmap',
-		      timeout: 2 * 24 * 3600 * 1000 // default to 2 days
-		  },
-		  'nikto': {
-		      command: 'whatweb'
-		      
-		  }		  
-	      }
-	  })
+	      .use('run', { batch: require('../conf/commands.js')()})
 	  .use('mongo-store',  options.mongo),
 	  xml2js = require('xml2js');
 
@@ -64,35 +51,6 @@ module.exports = function api(options){
     });
         
 
-    // this.sub('role:run,info:report',function(args,done){
-    // 	fs.readFile(`/data/${args.host}/whatweb.xml`, function(err, data) {
-    // 	    var parser = new xml2js.Parser({attrkey:'properties$'});
-    // 	    if(err){
-    // 		seneca.log.error(err);
-    // 		done(null, {error: JSON.stringify(err), result:JSON.stringify(data)});
-    // 	    } else {
-    // 		parser.parseString(data, function (err, result) {
-    // 		    if(err){
-    // 			seneca.log.error(err);
-    // 			done(null, {error: `Can\'t parse JSON for ${args.host}`});
-    // 		    } else {
-    // 			var instance = seneca
-    // 				.make$('nmaprun')
-    // 				.data$({nmaprun: result['nmaprun']})
-    // 				.save$((err, obj) => {
-    // 			    if(err){
-    // 				seneca.log.error(err);
-    // 				done(null, {error: JSON.stringify(err), result:JSON.stringify(data)});
-    // 			    } else {
-    // 				done(null, {status:'OK'});
-    // 			    }
-    // 			});
-    // 		    };
-    // 		});
-    // 	    };
-    // 	});
-    // });
-
     var q = [];
 
     this.wrap("role:exec", function(msg, respond) {
@@ -104,6 +62,7 @@ module.exports = function api(options){
     		    var old = q.pop() || {self:this, msg:msg};
     		    if(old){
 			const filePath = `${options.report_path}/${old.msg.cmd}.xml`;
+			console.log('Message:', msg.args);
 			// if(fs.existsSync(filePath)){
 			//     seneca.act(_.extend(msg, {role:'import'}), respond);
 			// } else 
@@ -116,12 +75,14 @@ module.exports = function api(options){
 			    
 			    proc.stdout.on('data', stdout.push.bind(stdout));
 			    proc.stderr.on('data', stderr.push.bind(stderr));
-			    proc.on('close', (ret) => {
-				console.log(stdout.join('\n'));
-				console.log(stderr.join('\n'));
-				console.log('Process finished:', ret);
-				if(ret === 0){
+			    proc.on('close', (code) => {
+				console.log('stdout:', stdout.join('\n'));
+				console.log('stderr', stderr.join('\n'));
+				console.log('Process finished:', code);
+				if(code === 0){
 				    seneca.act({role:'import', cmd:msg.cmd, host: old.msg.host});
+				} else {
+				    
 				}
 			    });
 			}
