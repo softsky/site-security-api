@@ -5,23 +5,17 @@ var mocha = require('mocha')
 , expect = chai.expect;
 
 var options = require('../../src/options.json');
-var [protocol, host, port] = "tcp://localhost:27017".split(/\:/);
+var [protocol, host, port] = (process.env.MONGODB_PORT || "tcp://localhost:27017").split(/\:/);
 var report_path = '/data';
 options.mongo.host = host.replace(/\/\//,''); options.mongo.port = port; //FIXME use destructuring assignments
 options.report_path = report_path;
 
+console.log(options.mongo);
 var seneca = require('seneca')()
-// .use('src/queue')
-// .use('src/email')
-// .use('src/routes')
+//.use('mongo-store',  options.mongo)
+	.use('mem-store',  options.mongo)
 	.use('src/entity', options)
 	.use('src/exec', options);
-	// .listen({
-	//     type: 'http',
-	//     port: '3000',
-	//     host: '0.0.0.0',
-	//     protocol: 'http'
-	// });
 
 
 
@@ -31,9 +25,9 @@ describe('seneca:exec microservice', () => {
 	    seneca.sub({role: 'exec', info: 'report'}, (args) => {
 		console.log(args);
 	    });
-	    seneca.act({role:'exec', cmd:'whatweb'}, (err, result) => {
+	    seneca.act({role:'exec', cmd:'whatweb', host:'192.168.0.254'}, (err, result) => {
 		expect(err).to.be.null;
-		expect(result).to.be.notNull;
+		expect(result).to.be.not.null;
 		expect(result.status).to.equal('scheduled');
 		done();
 	    });
