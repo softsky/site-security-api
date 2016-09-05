@@ -24,8 +24,7 @@ module.exports = function api(options){
     , seneca = require('seneca')()
 	  .use('entity')
 	  .use('src/import', options)
-	      .use('run', { batch: require('../conf/commands.js')()})
-	  .use('mongo-store',  options.mongo),
+	      .use('run', { batch: require('../conf/commands.js')()});
 	  xml2js = require('xml2js');
 
     this.add({role: 'exec', cmd:'whatweb'}, function (msg, done) {

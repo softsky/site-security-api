@@ -2,8 +2,7 @@ module.exports = function api(options){
 const _ = require('lodash')
 , ObjectId = require('mongodb').ObjectID
 , seneca = require('seneca')()
-      .use('entity')
-      .use('mongo-store',  options.mongo)
+      .use('entity');
 
 
 
