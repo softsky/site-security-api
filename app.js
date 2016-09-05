@@ -9,7 +9,7 @@ var [protocol, host, port] = (process.env.MONGODB_PORT || "tcp://localhost:27017
 var report_path = process.env.REPORT_PATH || '/data';
 options.mongo.host = host.replace(/\/\//,''); options.mongo.port = port; //FIXME use destructuring assignments
 
-options.report_path = process.env.NODE_ENV === 'production'?report_path:`${report_path}/${process.env.SCAN_DOMAIN}`;
+options.report_path = report_path;
 console.log(options.mongo);
 
 var seneca = require('seneca')()
