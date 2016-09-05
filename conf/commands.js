@@ -2,12 +2,12 @@ module.exports = function(options){
     return {
 	whatweb: {
 	    command: 'whatweb',
-	    args: [],
+	    args: [`--log-xml=${options.report_path}/whatweb.xml`, process.env.SCAN_DOMAIN],
 	    cwd: __dirname
 	},
 	nmap: {
 	    command: 'nmap',
-	    args: [],
+	    args: [`-oX', '${options.report_path}/nmap.xml`, process.env.SCAN_DOMAIN],
 	    cwd: __dirname
 	},
 	nikto: {
@@ -54,6 +54,10 @@ module.exports = function(options){
 	    command: 'ccze',
 	    args: [],
 	    cwd: __dirname
-	}
+	},
+	sleep: {
+	    command: 'sleep',
+	    args: [1]
+	}	
     };
 };
