@@ -37,10 +37,11 @@ RUN dpkg-reconfigure locales
 
 ENV LANG en_US.UTF-8
 
-VOLUME ["/data/reports"]
+VOLUME ["/data"]
 
 COPY *.js /site-security/
 ADD sslcert /site-security/sslcert
+COPY conf/*.js /site-security/conf/
 COPY src/*.js /site-security/src/
 COPY src/*.json /site-security/src/
 
