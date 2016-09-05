@@ -5,8 +5,7 @@ const _ = require('lodash')
 , async = require('async')
 , verifier = require('email-verify')
 , seneca = require('seneca')()
-      .use('entity')
-      .use('mongo-store', require('./options.json').mongo);
+      .use('entity');
 
 
 
