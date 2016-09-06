@@ -13,12 +13,13 @@ options.report_path = report_path;
 
 console.log(options.mongo);
 
-var seneca = require('seneca')()
-//.use('mongo-store',  options.mongo)
-	.use('mem-store',  options.mongo)
-	.use('src/entity', options)
-	.use('src/exec', options)
-	.client({timeout: 15000});
+const Promise = require('bluebird');
+var seneca = Promise.promisifyAll(require('seneca')()
+				  //.use('mongo-store',  options.mongo)
+				  .use('mem-store',  options.mongo)
+				  .use('src/entity', options)
+				  .use('src/exec', options)
+				  .client({timeout: 15000}), {suffix: 'Async'});
 
 describe('seneca:exec microservice', () => {
     describe('predefined command', () => {
@@ -47,22 +48,27 @@ describe('seneca:exec microservice', () => {
 	    });
 	}).timeout(20000);
 
-	it('should execute tasks in parallel', (done) => {
+	it.only('should execute tasks in parallel', (done) => {
 	    const cb = (result) => {
 		console.log(result);
 		done();
-	    }
-	    seneca.act({role:'exec', cmd:'sleep', time: 6, done: cb}, (err, result) => {
-		console.log('Done with', err, result);
-	    });
-	    
-	    _(5).times((it) => {
-		seneca.act({role:'exec', cmd:'sleep', time: 1}, (err, result) => {
+	    };
+	    seneca.actAsync({role:'exec', cmd:'sleep', time: 6, done: cb})
+		.then((err, result) => {
 		    console.log('Done with', err, result);
-		    //done();
+		})
+		.then(() => {
+		    var sleeps = [];
+		    _(6).times((it) => {
+			sleeps.push(seneca.actAsync({role:'exec', cmd:'sleep', time: 1}));
+		    });
+		    return Promise.all(sleeps);
+		})
+		.then(() => console.log('All done'))
+		.catch((e) => {
+		    console.error(e.stack);
 		});
-	    });
-	}).timeout(8000);
+	}).timeout(10000);
     });
 });
 

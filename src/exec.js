@@ -20,28 +20,6 @@ module.exports = function api(options){
 	      .use('run', { batch: require('../conf/commands.js')(options)})
 	      .use('entity')
 	      .use('src/import', options);
-
-    this.add({role: 'exec', cmd:'whatweb'}, function (msg, done) {
-	const filePath = `${options.report_path}/${msg.cmd}.xml`;
-
-	const spec = wrap({
-	    cwd: options.report_path,
-	    command: msg.cmd,
-	    args: [`--log-xml=${filePath}`, 'http://' + msg.host]
-	});
-	done(null, spec);
-    });
-
-    this.add({role:'exec', cmd:'nmap'}, function (msg, done) {
-	const filePath = `${options.report_path}/${msg.cmd}.xml`;
-
-	const spec = wrap({
-	    cwd: options.report_path,
-	    command: 'nmap',
-	    args: ['-oX',filePath, '--script','vuln', '-Pn', msg.host]
-	});
-	done(null, spec);
-    });
         
 
     var q = [], timer = 0;
@@ -49,7 +27,7 @@ module.exports = function api(options){
     this.wrap("role:exec", function(msg, respond) {
 	var self = this
 	, schedule_new = () => {
-	    timer = setTimeout(asyncQueueExecutor, 1);	    
+	    timer = setTimeout(asyncQueueExecutor, 1);
 	}
 	, asyncQueueExecutor = () => {
 	    class TaskQueue {
@@ -70,12 +48,11 @@ module.exports = function api(options){
 	    const EXEC_QUEUE_LIMIT = 3;
 	    
 	    async.eachOfLimit(new TaskQueue(q), EXEC_QUEUE_LIMIT, (item, key, callback) => {
-		//console.log('Item:', item, 'Key:', key);
 		self.prior(item, (err, spec) => {
 		    console.warn('Prior returned:', err, spec);
 		    seneca.act({role:'run', cmd:'execute', name: spec.command, spec: spec}, (err, result) => {
 			if(err){
-			    console.log(err);
+			    console.error(err);
 			}
 			console.log('Started', err, result);
 
@@ -91,13 +68,11 @@ module.exports = function api(options){
 		});
 	    }, (err) => {
 		if(err){
-		    console.error('Error occured', err);
+		    console.error('An Error occured', err);
 		}
 		clearTimeout(timer);
 		timer = 0;
 		console.log('All processes finished');
-		//schedule_new();
-		//respond(null, {status: 'completed'});
 	    });
 	};
 	q.push(msg);
@@ -118,8 +93,8 @@ module.exports = function api(options){
     	    prefix: '/api/exec',
     	    pin:    'role:exec,cmd:*',
     	    map: {
-    		nmap: { GET:true, suffix:'/:host' },
-    		whatweb: { GET:true, suffix:'/:host' }
+    		nmap: { GET:true /*, suffix:'/:host'*/ },
+    		whatweb: { GET:true /*, suffix:'/:host'*/ }
     	    }
     	}}, respond);
     });
