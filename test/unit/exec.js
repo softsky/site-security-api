@@ -17,38 +17,52 @@ var seneca = require('seneca')()
 //.use('mongo-store',  options.mongo)
 	.use('mem-store',  options.mongo)
 	.use('src/entity', options)
-	.use('src/exec', options);
+	.use('src/exec', options)
+	.client({timeout: 15000});
 
 describe('seneca:exec microservice', () => {
     describe('predefined command', () => {
+	seneca.add({role:'exec', cmd:'sleep'}, (msg, respond) => {
+	    var spec = {
+		cwd: '/',
+		command: 'sleep',
+		args: [msg.time || 1],
+		done: msg.done
+	    };
+	    console.log('Returning spec', spec);
+	    respond(null, spec);
+	});
+	
+	
 	it('should execute normally and return the result', (done) => {
-	    seneca.act({role:'exec', cmd:'whatweb', host:'192.168.0.254'}, (err, result) => {
+	    var cb = (result) => {
+		console.log('DONE:', result);
+		done();		
+	    };
+	    seneca.act({role:'exec', cmd:'sleep', time: 15, done: cb}, (err, result) => {
 		expect(err).to.be.null;
 		expect(result).to.be.not.null;
 		expect(result.status).to.equal('scheduled');
 		console.log(result);
-		done();
 	    });
-	});
+	}).timeout(20000);
 
-	it.only('should execute tasks in parallel', (done) => {
-	    seneca.add({role:'exec', cmd:'sleep'}, (msg, respond) => {
-		var spec = {
-		    cwd: '/',
-		    command: 'sleep',
-		    args: [msg.time || 1]
-		};
-		console.warn('Returning spec', spec);
-		respond(null, spec);
+	it('should execute tasks in parallel', (done) => {
+	    const cb = (result) => {
+		console.log(result);
+		done();
+	    }
+	    seneca.act({role:'exec', cmd:'sleep', time: 6, done: cb}, (err, result) => {
+		console.log('Done with', err, result);
 	    });
 	    
 	    _(5).times((it) => {
-		setTimeout(() => {
-		    seneca.act({role:'exec', cmd:'sleep', time: 5}, (err, result) => {
-		    });
-		}, Math.random() * 5000 * 1);
+		seneca.act({role:'exec', cmd:'sleep', time: 1}, (err, result) => {
+		    console.log('Done with', err, result);
+		    //done();
+		});
 	    });
-	}).timeout(15000);
+	}).timeout(8000);
     });
 });
 

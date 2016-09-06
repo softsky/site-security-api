@@ -44,41 +44,71 @@ module.exports = function api(options){
     });
         
 
-    var q = [];
-
+    var q = [], timer = 0;
     
     this.wrap("role:exec", function(msg, respond) {
-	var self = this,
-	    timer = 0,
-	    execute_process = (item, key, callback) => {
-		console.log('Item:', item, 'Key:', key);
+	var self = this
+	, schedule_new = () => {
+	    timer = setTimeout(asyncQueueExecutor, 1);	    
+	}
+	, asyncQueueExecutor = () => {
+	    class TaskQueue {
+		constructor(data) {
+		    this.data = data;
+		}
+
+		[Symbol.iterator]() {
+		    const self = this;		    
+		    return  {
+			next: function () {
+			    return self.data.length > 0?{value: self.data.pop(), done: false}:{done: true};
+			}
+		    };
+		}
+	    };
+	    
+	    const EXEC_QUEUE_LIMIT = 3;
+	    
+	    async.eachOfLimit(new TaskQueue(q), EXEC_QUEUE_LIMIT, (item, key, callback) => {
+		//console.log('Item:', item, 'Key:', key);
 		self.prior(item, (err, spec) => {
 		    console.warn('Prior returned:', err, spec);
 		    seneca.act({role:'run', cmd:'execute', name: spec.command, spec: spec}, (err, result) => {
-			console.warn('Finished', err, result);
-			respond(null, {status:'scheduled', procid: result.procid});
+			if(err){
+			    console.log(err);
+			}
+			console.log('Started', err, result);
 
 			// setting up run:report callback
-			seneca.sub({role:'run',info:'report', procid: result.procid}, callback);
+			seneca.sub({role:'run',info:'report', procid: result.procid}, (args) => {
+			    console.log('Finished', args);
+			    if(_.isFunction(args.report.spec.done)){
+				args.report.spec.done(args);
+			    }
+			    callback(null, args);		    
+			});
 		    });
 		});
-	    };
-	    
-	const asyncQueueExecutor = () => {
-	    const EXEC_QUEUE_LIMIT = 2;
-	    async.eachOfLimit(q, EXEC_QUEUE_LIMIT, execute_process, () => {
+	    }, (err) => {
+		if(err){
+		    console.error('Error occured', err);
+		}
 		clearTimeout(timer);
 		timer = 0;
-		console.log('All process finished');
+		console.log('All processes finished');
+		//schedule_new();
 		//respond(null, {status: 'completed'});
 	    });
 	};
 	q.push(msg);
+	respond(null, {status:'scheduled', len: q.length});
 	if(q.length){
 	    if(timer){
 		// let this other timer work
+		console.log('Not scheduling new queue. Let existing queue work');
 	    } else {
-		timer = setTimeout(asyncQueueExecutor, 1);
+		console.log('Scheduling new queue.'); 
+		schedule_new();
 	    }
 	};
     });
