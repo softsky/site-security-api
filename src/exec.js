@@ -9,6 +9,7 @@ const wrap = (spec) => {
 module.exports = function api(options){
     const _ = require('lodash')
     , async = require('async')
+    //, async = require('neo-async')
     , spawn = require('child_process').spawn
     , fs = require('fs')
     , dotenv = require('dotenv') //.configure()
@@ -45,66 +46,31 @@ module.exports = function api(options){
 
     var q = [];
 
+    
     this.wrap("role:exec", function(msg, respond) {
-    	// if (q.length < process.env.EXEC_QUEUE_LIMIT || 50) {
-    	//     var func = function(err, spec) {
-    	// 	if (err){
-    	// 	    respond(err);
-    	// 	} else {
-    	// 	    var old = q.pop() || {self:this, msg:msg};
-    	// 	    if(old){
-	// 		const filePath = `${options.report_path}/${old.msg.cmd}.xml`;
-	// 		console.log('Message:', msg.args);
-	// 		// if(fs.existsSync(filePath)){
-	// 		//     seneca.act(_.extend(msg, {role:'import'}), respond);
-	// 		// } else 
-	// 		{
-
-	// 		    console.log('spec', spec);				
-			    
-	// 		    var stdout = [], stderr = [];			   
-	// 		    var proc = spawn(spec.command, spec.args);
-			    
-	// 		    proc.stdout.on('data', stdout.push.bind(stdout));
-	// 		    proc.stderr.on('data', stderr.push.bind(stderr));
-	// 		    proc.on('close', (code) => {
-	// 			console.log('stdout:', stdout.join('\n'));
-	// 			console.log('stderr', stderr.join('\n'));
-	// 			console.log('Process finished:', code);
-	// 			if(code === 0){
-	// 			    seneca.act({role:'import', cmd:msg.cmd, host: old.msg.host});
-	// 			} else {
-				    
-	// 			}
-	// 		    });
-	// 		}
-	// 		respond(null, {status:'scheduled'});
-	// 	    }
-    	// 	}
-    	//     };
-    	//     this.prior(msg, func);
-    	// } else {
-    	//     q.push({self:this, msg:msg});
-    	// };
 	var self = this,
-	    timer = 0;
-	const asyncQueueExecutor = () => {
-	    const EXEC_QUEUE_LIMIT = 50;
-	    async.eachOfLimit(q, EXEC_QUEUE_LIMIT, (item, key, callback) => {
+	    timer = 0,
+	    execute_process = (item, key, callback) => {
 		console.log('Item:', item, 'Key:', key);
-		seneca.sub({role:'run',info:'report'}, (args) => {
-		    console.log('Got it:', args);
-		});
 		self.prior(item, (err, spec) => {
-		    console.log('Prior returned:', err, spec);
+		    console.warn('Prior returned:', err, spec);
 		    seneca.act({role:'run', cmd:'execute', name: spec.command, spec: spec}, (err, result) => {
-			console.log('Finished', err, result);
+			console.warn('Finished', err, result);
 			respond(null, {status:'scheduled', procid: result.procid});
-		    });		    
+
+			// setting up run:report callback
+			seneca.sub({role:'run',info:'report', procid: result.procid}, callback);
+		    });
 		});
-	    }, () => {
+	    };
+	    
+	const asyncQueueExecutor = () => {
+	    const EXEC_QUEUE_LIMIT = 2;
+	    async.eachOfLimit(q, EXEC_QUEUE_LIMIT, execute_process, () => {
 		clearTimeout(timer);
 		timer = 0;
+		console.log('All process finished');
+		//respond(null, {status: 'completed'});
 	    });
 	};
 	q.push(msg);

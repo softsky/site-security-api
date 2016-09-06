@@ -31,22 +31,24 @@ describe('seneca:exec microservice', () => {
 	    });
 	});
 
-	it.only('should execute tasks in parralel', (done) => {
-	    seneca.add({role:'exec', cmd:'sleep'}, (msg, done) => {
+	it.only('should execute tasks in parallel', (done) => {
+	    seneca.add({role:'exec', cmd:'sleep'}, (msg, respond) => {
 		var spec = {
 		    cwd: '/',
 		    command: 'sleep',
 		    args: [msg.time || 1]
 		};
-		console.log('Returning spec', spec); 
-		done(null, spec);
+		console.warn('Returning spec', spec);
+		respond(null, spec);
 	    });
 	    
-	    _(1).times((it) => {
-		seneca.act({role:'exec', cmd:'sleep', time: 5}, (err, result) => {
-		});
+	    _(5).times((it) => {
+		setTimeout(() => {
+		    seneca.act({role:'exec', cmd:'sleep', time: 5}, (err, result) => {
+		    });
+		}, Math.random() * 5000 * 1);
 	    });
-	});
+	}).timeout(15000);
     });
 });
 
