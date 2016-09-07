@@ -7,7 +7,7 @@ module.exports = function(options){
 	},
 	nmap: {
 	    command: 'nmap',
-	    args: [`-oX', '${options.report_path}/nmap.xml`, process.env.SCAN_DOMAIN],
+	    args: ['-Pn', '--script=vuln','-oX', `${options.report_path}/nmap.xml`, process.env.SCAN_DOMAIN],
 	    cwd: __dirname
 	},
 	nikto: {

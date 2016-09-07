@@ -1,10 +1,9 @@
 module.exports = function api(options){
+'use strict';
 const _ = require('lodash')
 , ObjectId = require('mongodb').ObjectID
 , seneca = require('seneca')()
       .use('entity');
-
-
 
     this.add({role:'entity', cmd:'save'}, function (msg, done){
 	var name$ = msg.name$;
@@ -40,8 +39,8 @@ const _ = require('lodash')
     });
 
     this.add('init:api', function (msg, respond) {
-	this.log.info('init:api called');
-	this.act('role:web',{use:{
+    	console.log('init:api called, entity');
+    	this.act('role:web',{use:{
     	    prefix: '/api/entity',
     	    pin:    'role:entity,cmd:*',
     	    map: {
@@ -49,7 +48,7 @@ const _ = require('lodash')
     		delete: { GET:true, POST: true, suffix:'/:name$' },
     		list: { GET:true, POST: true, suffix:'/:name$' }
     	    }
-	}}, respond);
+    	}}, respond);
     });
     
 }

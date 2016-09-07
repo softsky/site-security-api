@@ -16,14 +16,15 @@ var seneca = require('seneca')()
 // .use('src/queue')
 // .use('src/email')
 // .use('src/routes')
+	.use('web')
 	.use('src/entity', options)
 	.use('src/exec', options);
-	// .listen({
-	//     type: 'http',
-	//     port: '3000',
-	//     host: '0.0.0.0',
-	//     protocol: 'http'
-	// });
+// .listen({
+//     type: 'http',
+//     port: '3000',
+//     host: '0.0.0.0',
+//     protocol: 'http'
+// });
 
 
 
