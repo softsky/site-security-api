@@ -22,6 +22,44 @@ var seneca = Promise.promisifyAll(require('seneca')()
 				  .client({timeout: 15000}), {suffix: 'Async'});
 
 describe('seneca:exec microservice', () => {
+    describe('TaskQueue', () => {
+	it('Should  properly invoke next() for queue', () => {
+	    'use strict';
+	    // FIXME use actual array
+	    class TaskQueue {
+		constructor(data) {
+		    this.data = data;
+		}
+
+		[Symbol.iterator]() {
+		    const self = this;		    
+		    return  {
+			next: function () {
+			    var result = (self.data.length?{value: self.data.shift(), done: false}:{done: true});
+			    return result;
+			}
+		    };
+		}
+	    };
+	    
+	    const q = [1, 2, 3];
+
+	    const tq = new TaskQueue(q)
+	    , iter = tq[Symbol.iterator]();
+	    q.push(4);
+	    
+	    expect(iter.next()).to.deep.equal({done: false, value: 1});
+	    expect(iter.next()).to.deep.equal({done: false, value: 2});
+	    expect(iter.next()).to.deep.equal({done: false, value: 3});
+	    expect(iter.next()).to.deep.equal({done: false, value: 4});
+	    expect(iter.next()).to.deep.equal({done: true});
+	    q.push(1);
+	    console.log(tq.data, q);
+	    expect(iter.next()).to.deep.equal({done: false, value: 1});
+	    expect(iter.next()).to.deep.equal({done: true});
+	});
+    });
+    
     describe('predefined command', () => {
 	seneca.add({role:'exec', cmd:'sleep'}, (msg, respond) => {
 	    var spec = {
@@ -33,7 +71,7 @@ describe('seneca:exec microservice', () => {
 	    console.log('Returning spec', spec);
 	    respond(null, spec);
 	});
-	
+
 	
 	it('should execute normally and return the result', (done) => {
 	    var cb = (result) => {
@@ -46,29 +84,37 @@ describe('seneca:exec microservice', () => {
 		expect(result.status).to.equal('scheduled');
 		console.log(result);
 	    });
-	}).timeout(20000);
+	}).timeout(16000);
 
-	it.only('should execute tasks in parallel', (done) => {
+	it('should execute tasks in parallel', (done) => {
+	    var num = 0;
 	    const cb = (result) => {
-		console.log(result);
-		done();
-	    };
-	    seneca.actAsync({role:'exec', cmd:'sleep', time: 6, done: cb})
-		.then((err, result) => {
-		    console.log('Done with', err, result);
-		})
-		.then(() => {
-		    var sleeps = [];
-		    _(6).times((it) => {
-			sleeps.push(seneca.actAsync({role:'exec', cmd:'sleep', time: 1}));
-		    });
-		    return Promise.all(sleeps);
-		})
-		.then(() => console.log('All done'))
-		.catch((e) => {
-		    console.error(e.stack);
+		console.log('Num:', num);
+		if(++num === 7){
+		    done();
+		}
+	    }
+	    , runOneMore = (result)  => {
+		cb(result);		
+		seneca.act({role:'exec', cmd:'sleep', time: 1, done: cb}, (err, result) => {
+		    console.log('Queued:', result);		   
 		});
-	}).timeout(10000);
+	    };
+	    
+	    seneca.act({role:'exec', cmd:'sleep', time: 6, done: cb}, (err, result) => {
+		    console.log('Queued:', result);
+		seneca.act({role:'exec', cmd:'sleep', time: 4, done: runOneMore}, (err, result) => {
+		    console.log('Queued:', result);
+		});
+		seneca.act({role:'exec', cmd:'sleep', time: 2, done: runOneMore}, (err, result) => {
+		    console.log('Queued:', result);
+		});
+		seneca.act({role:'exec', cmd:'sleep', time: 1, done: runOneMore}, (err, result) => {
+		    console.log('Queued:', result);
+		});
+	    });
+
+	}).timeout(7000);
     });
 });
 

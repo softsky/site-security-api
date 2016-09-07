@@ -1,3 +1,5 @@
+'use strict';
+
 const wrap = (spec) => {
     var arr = ['tmux', 'new-window', spec.command].concat(spec.args);
     return {
@@ -20,81 +22,90 @@ module.exports = function api(options){
 	      .use('run', { batch: require('../conf/commands.js')(options)})
 	      .use('entity')
 	      .use('src/import', options);
-        
-
-    var q = [], timer = 0;
     
-    this.wrap("role:exec", function(msg, respond) {
-	var self = this
-	, schedule_new = () => {
-	    timer = setTimeout(asyncQueueExecutor, 1);
-	}
-	, asyncQueueExecutor = () => {
-	    class TaskQueue {
-		constructor(data) {
-		    this.data = data;
-		}
+    // this.add({role:'exec',cmd:'sleep'}, (msg, respond) => {
+    // 	const spec = {
+    // 	    command: msg.cmd,
+    // 	    args: [msg.time || 1]
+    // 	};
+    // 	console.log('Returning spec', spec);
+    // 	respond(null, spec);
+    // });
 
-		[Symbol.iterator]() {
-		    const self = this;		    
-		    return  {
-			next: function () {
-			    return self.data.length > 0?{value: self.data.pop(), done: false}:{done: true};
-			}
-		    };
+    class TaskQueue {
+	constructor(data) {
+	    this.data = data;
+	}
+
+	[Symbol.iterator]() {
+	    const self = this;		    
+	    return  {
+		next: function () {
+		    var result = (self.data.length?{value: self.data.shift(), done: false}:{done: true});
+		    return result;
 		}
 	    };
-	    
-	    const EXEC_QUEUE_LIMIT = 3;
-	    
-	    async.eachOfLimit(new TaskQueue(q), EXEC_QUEUE_LIMIT, (item, key, callback) => {
-		self.prior(item, (err, spec) => {
-		    console.warn('Prior returned:', err, spec);
-		    seneca.act({role:'run', cmd:'execute', name: spec.command, spec: spec}, (err, result) => {
-			if(err){
-			    console.error(err);
-			}
+	}
+    };
+    const EXEC_QUEUE_LIMIT = 3, queue = []
+    , iter = new TaskQueue(queue)[Symbol.iterator]();
+    var EXEC_QUEUE_SIZE = 0;
+    
+    this.wrap("role:exec", function(msg, respond) {
+	const self = this
+	, peek = () => {
+	    const item = iter.next();
+	    console.log('Item:', item);
+	    if(item.done){
+		return;
+	    }
+
+	    self.prior(item.value, (err, spec) => {
+		console.warn('Prior returned:', err, spec);
+		seneca.act({role:'run', cmd:'execute', name: spec.command, spec: spec}, (err, result) => {
+		    if(err){
+			console.error(err);
+		    } else {
+			EXEC_QUEUE_SIZE++;
 			console.log('Started', err, result);
 
 			// setting up run:report callback
 			seneca.sub({role:'run',info:'report', procid: result.procid}, (args) => {
+			    EXEC_QUEUE_SIZE--;
 			    console.log('Finished', args);
 			    if(_.isFunction(args.report.spec.done)){
 				args.report.spec.done(args);
 			    }
-			    callback(null, args);		    
+			    if(queue.length){
+				// peeking next to execute
+				peek();
+			    };
 			});
-		    });
+		    }
 		});
-	    }, (err) => {
-		if(err){
-		    console.error('An Error occured', err);
-		}
-		clearTimeout(timer);
-		timer = 0;
-		console.log('All processes finished');
 	    });
+	    
 	};
-	q.push(msg);
-	respond(null, {status:'scheduled', len: q.length});
-	if(q.length){
-	    if(timer){
-		// let this other timer work
-		console.log('Not scheduling new queue. Let existing queue work');
-	    } else {
-		console.log('Scheduling new queue.'); 
-		schedule_new();
-	    }
-	};
+	    
+	queue.push(msg);
+	if(EXEC_QUEUE_SIZE < EXEC_QUEUE_LIMIT){
+	    peek();
+	    respond(null, {status:'scheduled', msg: msg, 'queue-size': queue.length});
+	} else {
+	    // let it live in queue till next tick
+	    respond(null, {status:'queued', msg: msg, 'queue-size': queue.length});	    
+	}
     });
     
     this.add('init:api', function (msg, respond) {
+	console.log('init:api called, exec');
     	this.act('role:web',{use:{
     	    prefix: '/api/exec',
     	    pin:    'role:exec,cmd:*',
     	    map: {
-    		nmap: { GET:true /*, suffix:'/:host'*/ },
-    		whatweb: { GET:true /*, suffix:'/:host'*/ }
+    		nmap: { GET:true, suffix:'/:command'},
+    		whatweb: { GET:true,suffix:'/:command'},
+		sleep: {GET: true }
     	    }
     	}}, respond);
     });
