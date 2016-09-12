@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "node app.js"
+      "start": "node app.js",
+      "test": "mocha --watch --recursive test"
+      
   },
   "dependencies": {
     "async": "^2.0.0",
