@@ -61,17 +61,18 @@ describe('seneca:exec microservice', () => {
     });
     
     describe('predefined command', () => {
-	seneca.add({role:'exec', cmd:'sleep'}, (msg, respond) => {
-	    var spec = {
-		cwd: '/',
-		command: 'sleep',
-		args: [msg.time || 1],
-		done: msg.done
-	    };
-	    console.log('Returning spec', spec);
-	    respond(null, spec);
+	before('Setting up custom sleep', () => {
+	    seneca.add({role:'exec', cmd:'sleep'}, (msg, respond) => {
+		var spec = {
+		    cwd: '/',
+		    command: 'sleep',
+		    args: [msg.time || 1],
+		    done: msg.done
+		};
+		console.log('Returning spec', spec);
+		respond(null, spec);
+	    });	    
 	});
-
 	
 	it('should execute normally and return the result', (done) => {
 	    var cb = (result) => {

@@ -1,18 +1,9 @@
-'use strict';
-
-const wrap = (spec) => {
-    var arr = ['tmux', 'new-window', spec.command].concat(spec.args);
-    return {
-	command: arr[0],
-	args: arr.slice(1)
-    };
-};
-
 module.exports = function api(options){
+    'use strict';
+    
     const _ = require('lodash')
     , async = require('async')
     //, async = require('neo-async')
-    , spawn = require('child_process').spawn
     , fs = require('fs')
     , dotenv = require('dotenv') //.configure()
     , request = require('request')
@@ -20,7 +11,6 @@ module.exports = function api(options){
     , xml2js = require('xml2js')    
     , seneca = require('seneca')()
 	      .use('run', { batch: require('../conf/commands.js')(options)})
-	      .use('entity')
 	      .use('src/import', options);
     
     // this.add({role:'exec',cmd:'sleep'}, (msg, respond) => {
@@ -31,6 +21,15 @@ module.exports = function api(options){
     // 	console.log('Returning spec', spec);
     // 	respond(null, spec);
     // });
+    
+    const wrap = (spec) => {
+	var arr = ['tmux', 'new-window', spec.command].concat(spec.args);
+	return {
+	    command: arr[0],
+	    args: arr.slice(1)
+	};
+    };
+
 
     class TaskQueue {
 	constructor(data) {
@@ -55,7 +54,6 @@ module.exports = function api(options){
 	const self = this
 	, peek = () => {
 	    const item = iter.next();
-	    console.log('Item:', item);
 	    if(item.done){
 		return;
 	    }
@@ -88,13 +86,16 @@ module.exports = function api(options){
 	};
 	    
 	queue.push(msg);
+	var resp;
 	if(EXEC_QUEUE_SIZE < EXEC_QUEUE_LIMIT){
 	    peek();
-	    respond(null, {status:'scheduled', msg: msg, 'queue-size': queue.length});
+	    resp = {status:'scheduled', 'queue-size': queue.length};
+	    
 	} else {
 	    // let it live in queue till next tick
-	    respond(null, {status:'queued', msg: msg, 'queue-size': queue.length});	    
+	    resp = {status:'queued', 'queue-size': queue.length};
 	}
+	respond(null, resp);
     });
     
     this.add('init:api', function (msg, respond) {
@@ -105,7 +106,7 @@ module.exports = function api(options){
     	    map: {
     		nmap: { GET:true, suffix:'/:command'},
     		whatweb: { GET:true,suffix:'/:command'},
-		sleep: {GET: true }
+		sleep: {GET: true, suffix:'/:command' }
     	    }
     	}}, respond);
     });
