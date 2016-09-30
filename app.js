@@ -12,20 +12,14 @@ options.mongo.host = host.replace(/\/\//,''); options.mongo.port = port; //FIXME
 options.report_path = report_path;
 console.log(options.mongo);
 
+const PORT = parseInt(process.env.NODE_PORT) || 3001;
 var seneca = require('seneca')()
 // .use('src/queue')
 // .use('src/email')
 // .use('src/routes')
-	.use('web')
-	.use('src/entity', options)
-	.use('src/exec', options);
-// .listen({
-//     type: 'http',
-//     port: '3000',
-//     host: '0.0.0.0',
-//     protocol: 'http'
-// });
-
+    .use('web')
+    .use('src/entity', options)
+    .use('src/exec', options);
 
 
 var app = require('express')()
@@ -37,9 +31,8 @@ var credentials = {key: privateKey, cert: certificate};
 var httpsServer = https.createServer(credentials, app);
 
 // // This is how you integrate Seneca with Express
-//app.listen(process.env.NODE_PORT || 3000);
-httpServer.listen(parseInt(process.env.NODE_PORT) || 3000);
-httpsServer.listen((parseInt(process.env.NODE_PORT) || 3000) + 443);
+httpServer.listen(PORT);
+httpsServer.listen(PORT + 443);
 
 
 
