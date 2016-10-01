@@ -1,8 +1,11 @@
+'use strict';
+
+const _ = require('lodash')
+, async = require('async')
+, fs = require('fs')
+, xml2js = require('xml2js');
+
 module.exports = function(options){
-    const _ = require('lodash')
-    , async = require('async')
-    , fs = require('fs')
-    , xml2js = require('xml2js')
     , seneca = require('seneca')()
 	      .use('entity');
 

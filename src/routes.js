@@ -1,6 +1,7 @@
-const _ = require('lodash')
-, seneca = require('seneca')()
-      .use('entity')
+'use strict';
+const _ = require('lodash');
 
 module.exports = function(options){
-}
+    var seneca = this;
+
+};

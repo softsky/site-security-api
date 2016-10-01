@@ -1,35 +1,33 @@
-module.exports = function api(options){
 'use strict';
 const _ = require('lodash')
-, ObjectId = require('mongodb').ObjectID
-, seneca = require('seneca')()
-      .use('entity');
+, ObjectId = require('mongodb').ObjectID;
 
+module.exports = function api(options){
+    var seneca = this;
+    //seneca.use('entity');
+    
     this.add({role:'entity', cmd:'save'}, function (msg, done){
-	var name$ = msg.name$;
-	delete msg.name$;
-	var obj = msg.req$.body;
+	var obj = msg.body;
 	// if(obj._id){
 	//     obj._id = ObjectId(obj._id);
 	// }
-	//console.log(obj);
+	//console.log(obj); 
 	seneca
-	    .make$(name$)
+	    .make$(msg.name)
 	    .save$(obj, done);
     });
 
     this.add({role:'entity', cmd:'list'}, function (msg, done){
-	var sq = _.chain(msg)
-	    .pickBy((val, key) => { return key.startsWith('q.'); })
-	    .mapKeys((val, key) => { return key.replace(/q\./, ''); })
-	    .mapValues((val, idx) => {
-		return (val.startsWith('/') && val.endsWith('/'))?new RegExp(val.substring(1, val.length - 1)):val;
-	    })
-	    .value();
-	console.log(sq, msg.name);
+	// var sq = _.chain(msg)
+	//     .pickBy((val, key) => { return key.startsWith('q.'); })
+	//     .mapKeys((val, key) => { return key.replace(/q\./, ''); })
+	//     .mapValues((val, idx) => {
+	// 	return (val.startsWith('/') && val.endsWith('/'))?new RegExp(val.substring(1, val.length - 1)):val;
+	//     })
+	//     .value();
 	seneca
 	    .make$(msg.name)
-    	    .list$(sq, (err, entities) => {
+    	    .list$({}, (err, entities) => {
 		if(err){
 		    done(null, {error: err});
 		} else {
@@ -49,6 +47,5 @@ const _ = require('lodash')
     		list: { GET:true, POST: true, suffix:'/:name$' }
     	    }
     	}}, respond);
-    });
-    
-}
+    });    
+};

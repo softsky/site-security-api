@@ -1,9 +1,8 @@
 const _ = require('lodash')
-, async = require('async')
-, seneca = require('seneca')()
-      .use('entity');
+, async = require('async');
 
 module.exports = function(options){
+    var seneca = this;
     // var q = async.priorityQueue((task, callback)  => {	
     // 	seneca.act({role:'exec',cmd:'nmap', host: task.domain, timeout$:2 * 24 * 3600 * 1000 /* allowing two days for task execution */}, (err, res) => {
     // 	    if(err){
