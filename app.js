@@ -1,6 +1,9 @@
 var fs = require('fs');
 var http = require('http');
 var https = require('https');
+var nodemailer = require('nodemailer');
+var dotenv = require('dotenv').config();
+
 var privateKey  = fs.readFileSync(__dirname + '/sslcert/server.key', 'utf8');
 var certificate = fs.readFileSync(__dirname + '/sslcert/server.crt', 'utf8');
 
@@ -8,6 +11,7 @@ var options = require('./src/options.json');
 var [protocol, host, port] = (process.env.MONGODB_PORT || "tcp://localhost:27017").split(/\:/);
 var report_path = process.env.REPORT_PATH || '/data';
 options.mongo.host = host.replace(/\/\//,''); options.mongo.port = port; //FIXME use destructuring assignments
+options.nodemailerTransport = nodemailer.createTransport(process.env.SMTP_CONNECTION_STRING);
 
 options.report_path = report_path;
 console.log(options.mongo);
@@ -18,7 +22,7 @@ var seneca = require('seneca')()
 // .use('src/email')
 // .use('src/routes')
     .use('web')
-    .use('src/entity', options)
+    .use('entity', options)
     .use('src/exec', options);
 
 
