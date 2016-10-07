@@ -5,7 +5,9 @@ const _ = require('lodash')
 , request = require('request')
 , validate = require('validate.js')
 , async = require('async')
-, verifier = require('email-verify');
+, verifier = require('email-verify')
+, path = require('path')
+, glob = require('glob');
 
 const Promise = require('bluebird');
 
@@ -78,15 +80,41 @@ module.exports = function(options){
             })
             .then((c) => scan.customer_id = c.id)
             .then(() => scan.saveAsync())
-            .then(() => seneca.actAsync({role:'notify',cmd:'email', action: 'online-scan-start', user: card}))
+            .then(() => seneca.actAsync({role:'notify',cmd:'email', action: 'online-scan-start'}, {user: card}))
             .then(() => { return {status:'scheduled'};})
             .then(_.curry(respond)(null))
+        // this executes 
+            .then(() => seneca.actAsync({role:'exec', cmd: 'sniper'}, {host: card.url, extra: card}))
+            .then(console.log.bind(console))
             .catch(respond);
         
     });
 
     seneca.ready((respond) => {
 	console.log('init:api called, action');
+        
+	seneca.sub('role:run,info:report',function(args){
+            const card = args.report.spec.extra;
+            console.log('INFO:args', card);
+            let attachments;
+            // TODO rework using Promises
+            glob(`/usr/share/sniper/loot/reports/sniper-${card.url}-*.txt`, {}, function (er, files) {
+                attachments = _(files).map((file) => {
+                    return {
+                        filename: path.basename(file),
+                        path: file
+                    };
+                }).value();
+
+                console.log(attachments);
+                seneca.actAsync({role:'notify',cmd:'email', action: 'online-scan-finish'},
+                                {user: card,
+                                 bcc: 'info@softsky.com.ua',
+                                 attachments: attachments});                
+            });            
+	});
+	
+        
     	this.act('role:web',{use:{
     	    prefix: '/api/on',
     	    pin:    'role:on, cmd:*',

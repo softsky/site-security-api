@@ -5,6 +5,11 @@ module.exports = function(options){
 	    args: [`--log-xml=${options.report_path}/whatweb.xml`, process.env.SCAN_DOMAIN],
 	    cwd: __dirname
 	},
+	sniper: {
+	    command: 'sniper',
+	    args: [ process.env.SCAN_DOMAIN, 'report'],
+	    cwd: __dirname
+	},
 	nmap: {
 	    command: 'nmap',
 	    args: ['-Pn', '--script=vuln','-oX', `${options.report_path}/nmap.xml`, process.env.SCAN_DOMAIN],

@@ -3,7 +3,7 @@ const _ = require('lodash')
 , async = require('async')
 //, async = require('neo-async')
 , fs = require('fs')
-, dotenv = require('dotenv') //.configure()
+, dotenv = require('dotenv').config({silent:true})
 , request = require('request')
 , qs = require('querystring')
 , xml2js = require('xml2js')
@@ -40,14 +40,14 @@ class TaskQueue {
 
 module.exports = function api(options){
     var seneca = this;
-    seneca//.use('run', { batch: require('../conf/commands.js')(options)})
-	    .use('run', { batch: {
-		whatweb: {
-		    command: 'whatweb',
-		    args: [`--log-json=/dev/stdout`],
-		    cwd: __dirname
-		},
-	    }})
+    seneca.use('run', { batch: require('../conf/commands.js')(options)})
+	    // .use('run', { batch: {
+	    //     whatweb: {
+	    //         command: 'whatweb',
+	    //         args: [`--log-json=/dev/stdout`],
+	    //         cwd: __dirname
+	    //     },
+	    // }})
 	.use('src/import', options);
 
     
@@ -93,16 +93,25 @@ module.exports = function api(options){
 	               console.log(err, result);
 	           });
     });
+
+    this.add({role:'exec', cmd:'sniper'}, (msg, respond) => {
+	seneca.act({role:'run',cmd:'execute',name:'sniper'}, {spec: {
+	    args: [msg.host, 'report'],
+            extra:  msg.extra
+	}}, (err, result) => {
+            respond(err, result);
+	});
+    });
     
     
     
-    const wrap = (spec) => {
-	var arr = ['tmux', 'new-window', spec.command].concat(spec.args);
-	return {
-	    command: arr[0],
-	    args: arr.slice(1)
-	};
-    };
+    // const wrap = (spec) => {
+    //     var arr = ['tmux', 'new-window', spec.command].concat(spec.args);
+    //     return {
+    //         command: arr[0],
+    //         args: arr.slice(1)
+    //     };
+    // };
 
 
     const EXEC_QUEUE_LIMIT = 3, queue = []
@@ -162,8 +171,8 @@ module.exports = function api(options){
     	    prefix: '/api/exec',
     	    pin:    'role:exec, cmd:*',
     	    map: {
-    		nmap: { GET:true, suffix:'/:command'},
-    		whatweb: { GET:true, suffix:'/:host'},
+    		whatweb: { GET: true, suffix:'/:host'},
+                sniper: { GET: true, suffix:'/:host'},
 		sleep: {GET: true, suffix:'/:command' }
     	    }
     	}}, respond);

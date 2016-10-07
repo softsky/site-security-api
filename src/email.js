@@ -62,9 +62,11 @@ module.exports = function(options){
                 const mail = {
                     from: '"SOFTSKY Support" <gutsal.arsen@softsky.com.ua>',
                     to: user.email, // sender address
+                    bcc: msg.bcc,
                     subject: result.subject,
                     text: result.text,
-                    html: result.html
+                    html: result.html,
+                    attachments: msg.attachments
                 };
 
                 return nodemailerTransport.sendMail(mail,  (err, responseStatus) => { 
