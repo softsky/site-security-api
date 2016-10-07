@@ -1,9 +1,15 @@
 var mocha = require('mocha')
 , chai = require('chai')
+, chaiAsPromised = require('chai-as-promised')
 , assert = chai.assert
-, should = chai.should()
 , expect = chai.expect
-, _ = require('lodash');
+, should = chai.should()
+, _ = require('lodash')
+, nodemailer = require('nodemailer')
+, stubTransport = require('nodemailer-stub-transport');
+
+chai.use(chaiAsPromised);
+
 
 var options = require('../../src/options.json');
 var [protocol, host, port] = (process.env.MONGODB_PORT || "tcp://localhost:27017").split(/\:/);
@@ -12,28 +18,24 @@ options.mongo.host = host.replace(/\/\//,'');
 options.mongo.port = port; //FIXME use destructuring assignments
 options.mongo.db = 'test';
 options.report_path = report_path;
-
+options.nodemailerTransport = nodemailer.createTransport(stubTransport({keepBcc:true}));
 console.log('OPTIONS', options.mongo);
 
 const Promise = require('bluebird');
-var seneca =   require('seneca')()
-        .use('seneca-bluebird')
-//.use('mem-store',  options.mongo)
-        .use('mongo-store',  options.mongo)
+var seneca =  Promise.promisifyAll(require('seneca')(), {suffix:'Async'})
+        .use('mem-store',  options.mongo)
+//.use('mongo-store',  options.mongo)
         .use('entity')
         .use('src/action', options)
-        .client({
-	    timeout: 15000
-        });
+        .use('src/email', options);
 
 describe('seneca:action microservice', () => {
     before((done) => {
-        seneca
-            .ready(done);
+        seneca.ready(done);
     });
     describe('on:online-scan', () => {
 	it('should validate parameters', (done) => {
-            seneca.actAsync({role:'on', cmd:'online-scan', card: {}})
+            seneca.actAsync({role:'on', cmd:'online-scan', name:'start', card: {}})
                 .then(() => { throw new Error('Shouldn\'t be here');})
                 .catch((err) => {
                     console.log(err);
@@ -43,24 +45,53 @@ describe('seneca:action microservice', () => {
                 })
                 .finally(done);
         });
-        it.only('should call online-scan', (done) =>  {
-            seneca.actAsync({role:'on', cmd:'online-scan', card: {
-                url:'softsky.com.ua',
+        it.only('should store to database and send email', () =>  {
+            const card = {
+                url:'example.com',
                 name: {
-                    first: 'Arsen',
-                    last:'Gutsal'
+                    first: 'John',
+                    last:'Doe'
                 },
-                email:'gutsal.arsen@gmail.com'}})
-                .catch((err, result) => {
-                    console.log('Error', err.msg);
-                    done(err.msg);
-                })            
-                .then((results) => {
-                    console.log('Results:', results);
+                email:'john.doe@gmail.com',
+                'scan-type':'wordpress',
+                'round':'0',
+                'coupon':'XXX000'
+            };
+
+            const c$ = seneca.make$('customer'), s$ = seneca.make$('scan');
+
+            let cid;
+            return Promise.all([
+                expect(c$.listAsync()).to.eventually.have.length(0),
+                expect(s$.listAsync()).to.eventually.have.length(0)
+            ])
+                .then(() => seneca.actAsync({role:'on', cmd:'online-scan', action:'start'}, {card: card}))
+                .then((r) => expect(r).to.be.deep.equal({status:'scheduled'}))
+                .then(() => Promise.all([c$.listAsync(), s$.listAsync()]))
+                .then(([c,s]) => {
+                    console.log('+++++++++', c, s);
+                    expect(c).to.have.length(1);
+                    c = c[0];
+                    c.email.should.equal('john.doe@gmail.com');
+                    c.name.should.deep.equal({first:'John', last:'Doe'});
+                    cid = c.id;
+                    
+                    expect(s).to.have.length(1);
+                    s = s[0];
+                    console.log(cid, s);
+                    expect(s).to.have.property('url', 'example.com');
+                    expect(s).to.have.property('scan-type', 'wordpress');
+                    expect(s).to.have.property('round', '0');
+                    expect(s).to.have.property('coupon','XXX000');
+                    expect(s).to.have.property('customer_id', cid);                    
                 })
-                .finally((err, result) => {
-                    done(null, result);
-                });
+            // trying to save second instance
+                .then(() => seneca.actAsync({role:'on', cmd:'online-scan', action:'start'}, {card: card}))
+                .then((r) => expect(r).to.be.deep.equal({status:'scheduled'}))            
+                .then(() => c$.listAsync())
+                .then((c) => expect(c).to.have.length(1))
+                .then(() => s$.listAsync())
+                .then((s) => expect(s).to.have.length(2));            
         });
         
         it('test email template', (done) => {

@@ -155,7 +155,8 @@ module.exports = function api(options){
     // 	respond(null, resp);
     // });
     
-    this.add('init:api', function (msg, respond) {
+//    this.add('init:api', function (msg, respond) {
+    seneca.ready((respond) => {
 	console.log('init:api called, exec');
     	this.act('role:web',{use:{
     	    prefix: '/api/exec',

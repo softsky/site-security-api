@@ -11,11 +11,21 @@ const Promise = require('bluebird');
 
 module.exports = function(options){
     var seneca = this;
-    this.add({role:'on', cmd:'online-scan'}, (msg, respond) => {
-        
+
+    this.ready(() => {
+                // extending Entity with async methods
+                seneca.private$.exports.Entity.prototype.listAsync = 
+                    Promise.promisify(seneca.private$.exports.Entity.prototype.list$);
+                seneca.private$.exports.Entity.prototype.loadAsync = 
+                    Promise.promisify(seneca.private$.exports.Entity.prototype.load$);
+                seneca.private$.exports.Entity.prototype.saveAsync = 
+                    Promise.promisify(seneca.private$.exports.Entity.prototype.save$);
+    });
+    this.add({role:'on', cmd:'online-scan', action:'start'}, (msg, respond) => {
+        var card = msg.card || msg.req$.body;
         //+++VALIDATE
-        const v = validate(msg.card, {
-            url: {
+        const v = validate(card, {
+            'url': {
                 presence: true,
                 format: {
                     pattern: /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/,
@@ -31,47 +41,59 @@ module.exports = function(options){
             },
             'name.last':{
                 presence: true
+            },
+            'scan-type':{
+                presence: true
+            },
+            'round':{
+                presence: true
+            },
+            'coupon':{
+                presence: false,
+                format: {
+                    pattern: /^[\w\d]{6}/
+                }
             }
+            
         });
         if(v){
             console.log(v);
             // something is wrong
-            respond('Invalid arguments', v);
+            respond(null, {status: 'error', reason: {msg: 'Invalid arguments', reason:v}});
             return;
         };
         //---VALIDATE
-        
-        var ent$;
 
-        Promise.promisify(seneca.make$)('customer', _.extend(msg.card,{}))
-            .catch(console.log)
-            .then((ent) => {
-                var ent$ = ent.promisifyAll(ent, {suffix: 'Async'});
-                // var ent$ = seneca 
-                //         .make$('customer', _.extend(msg.card,{}));
-                ent$.list$Async({email:msg.card.email})
-                    .then(console.log.bind(console))
-                    .then((items) => { 
-                        if(items.length === 0){
-                            ent$.save$((err, result) => {
-                                if(err){
-                                    console.log('--------------');
-                                    console.log('ERROR:', err.msg);
-                                    respond(err.msg, null);
-                                } else {
-                                    console.log('++++++++++++++');
-                                    respond(null, result);
-                                }
-                            });
-                            
-                        }})
-                    .catch(console.log.bind(console));
-                
-            });
-        // if(ent$.list$({email:msg.card.email}, (err, items) => {
-        //     } else {
-        //         respond(null, {status:'Looks like entry already exists in the database'});
-        //     }                        
-        // }));
-      });
+        var customer = seneca.make$('customer', {name: card.name, email:card.email});
+        var scan = seneca.make$('scan', {url: card.url, 'scan-type': card['scan-type'], round:card['round'],coupon: card.coupon});
+        
+        customer.listAsync({email:card.email})
+            .then((items) => { 
+                if(items.length === 0){
+                    return customer.saveAsync();
+                } else {
+                    // item already in database
+                    return Promise.resolve(items[0]);
+                }
+            })
+            .then((c) => scan.customer_id = c.id)
+            .then(() => scan.saveAsync())
+            .then(() => seneca.actAsync({role:'notify',cmd:'email', action: 'online-scan-start', user: card}))
+            .then(() => { return {status:'scheduled'};})
+            .then(_.curry(respond)(null))
+            .catch(respond);
+        
+    });
+
+    seneca.ready((respond) => {
+	console.log('init:api called, action');
+    	this.act('role:web',{use:{
+    	    prefix: '/api/on',
+    	    pin:    'role:on, cmd:*',
+    	    map: {
+    		'online-scan': { POST:true, suffix:'/:action' }
+    	    }
+    	}}, respond);
+        
+    });    
 };

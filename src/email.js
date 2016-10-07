@@ -40,15 +40,25 @@ module.exports = function(options){
     };
 
     loopDomains(); // initializing
+    
+    this.add({role:'template', cmd:'render'}, (msg, done) => {
+        var dir =  path.join(msg.templateDir || templateDir, msg.action);
+        var template = new EmailTemplate(dir);
 
-    this.add({role:'notify', cmd:'email',name:'online-scan-start'}, (msg, done) => {        
-        var users = msg.users?msg.users:[msg.user];
+        template.render(msg.object, msg.locale, done);
+    });
+    
 
-        var sendCards = msg.users.map((user) => {
-            var dir =  path.join(templateDir, msg.name);
+    this.add({role:'notify', cmd:'email'}, (msg, done) => {
+        var user = msg.user?msg.user:msg.req$.body;
+        var users = msg.users?msg.users:_.isArray(user)?user:[user];
+        var action = msg.action;
+
+        var sendCards = users.map((user) => {
+            var dir =  path.join(templateDir, action);
             var newsletter = new EmailTemplate(dir);
 
-            return newsletter.render(user, user.locale, (err, result) => {
+            seneca.act({role:'template', cmd:'render', action: action, object: user, locale: user.locale}, (err, result) => {
                 const mail = {
                     from: '"SOFTSKY Support" <gutsal.arsen@softsky.com.ua>',
                     to: user.email, // sender address
@@ -60,9 +70,10 @@ module.exports = function(options){
                 return nodemailerTransport.sendMail(mail,  (err, responseStatus) => { 
                     if (err) {
                         console.error(err);
+                        //done(err);
                     } else {
                         responseStatus.response = responseStatus.response.toString('utf-8');
-                        Promise.resolve(responseStatus); 
+                        //done(null, responseStatus.response);
                     }
                 });
                 
@@ -125,4 +136,25 @@ module.exports = function(options){
 	    }
 	});
     });
+
+    //    this.add('init:api', function (msg, respond) {
+    seneca.ready((respond) => {
+	console.log('init:api called, email');
+    	this.act('role:web',{use:{
+    	    prefix: '/api/template',
+    	    pin:    'role:template, cmd:*',
+    	    map: {
+    		render: { POST:true }
+    	    }
+    	}}, respond);
+        
+    	this.act('role:web',{use:{
+    	    prefix: '/api/notify',
+    	    pin:    'role:notify, cmd:*',
+    	    map: {
+    		email: { POST:true, suffix:'/:action' }
+    	    }
+    	}}, respond);
+    });
+    
 };

@@ -1,9 +1,12 @@
+const Promise = require('bluebird');
+
 var mocha = require('mocha')
 , chai = require('chai')
 , assert = chai.assert
 , should = chai.should()
 , expect = chai.expect
 , _ = require('lodash')
+, parseString = Promise.promisify(require('xml2js').parseString)
 , nodemailer = require('nodemailer')
 , stubTransport = require('nodemailer-stub-transport');
 
@@ -15,7 +18,6 @@ options.report_path = report_path;
 options.nodemailerTransport = nodemailer.createTransport(stubTransport({keepBcc:true}));
 console.log(options.mongo);
 
-const Promise = require('bluebird');
 var seneca = Promise.promisifyAll(require('seneca')()
 				  //.use('mongo-store',  options.mongo)
 				  .use('mem-store',  options.mongo)
@@ -26,18 +28,58 @@ var seneca = Promise.promisifyAll(require('seneca')()
                                   , {suffix: 'Async'});
 
 describe('seneca:email microservice', () => {
+
+    describe('template', () => {
+        const fs = require('fs')
+        , path = require('path');
+        
+	it('should properly render email template', (done) => {
+            var srcPath = 'email-templates'
+            , user = {
+                email: 'a@a.com',
+                name: {first: 'John', last: 'Doe'},
+                url: 'http://example.com'
+            }
+            ,  directories = fs.readdirSync(srcPath)
+                    .filter((file) => file.startsWith('.') === false // omitting hinden directories
+                            && fs.statSync(path.join(srcPath,file)).isDirectory());
+
+            _(directories).each((it) => {
+                seneca.act({role:'template', cmd:'render', name: it, object: user, locale: user.locale}, (err, result) => {
+                    if(err){
+                        done(err);
+                    }
+                    // making sure HTML is valid
+                    parseString(result.html)
+                        .catch((err) => {
+                            console.log('',err);
+                            done(err);
+                        })
+                        .then((it) => {
+                            console.log(it);
+                            const filtered =_(it).filter((it, key) => (key[0] != '_') && (key[0] === key[0].toUpperCase())).value();
+                            console.log(filtered);
+                            expect(filtered.length).to.equal(0, 'Found upercased tags:' + JSON.stringify(filtered));
+                            
+                        });                    
+                });                
+            });
+            done();
+        });
+
+    });
     
     describe('notify', () => {
         var users = [
-            {
-                url: 'spaghetti.com',
-                email: 'info@softsky.com.ua',
-                name: {first: 'John', last: 'Rigatoni'}
-            },{
-                url: 'spaghetti.com',
-                email: 'support@softsky.com.ua',
-                name: {first: 'Luca', last: 'Tortellini'}
-            },
+            // {
+            //     url: 'spaghetti.com',
+            //     email: 'info@softsky.com.ua',
+            //     name: {first: 'John', last: 'Rigatoni'}
+            // },{
+            //     url: 'spaghetti.com',
+            //     email: 'support@softsky.com.ua',
+            //     name: {first: 'Luca', last: 'Tortellini'}
+            // },
             {
                 url: 'softsky.com.ua',
                 email: 'scan@softsky.com.ua',
@@ -51,9 +93,9 @@ describe('seneca:email microservice', () => {
                 .then((results) => {
                     _(results).each((it, idx) => {
                         console.log(it);
-                        assert(it.html.indexOf('#{') === -1, 'html should not contain #{}, but it does:' + it.html);
-                        assert(it.text.indexOf('#{') === -1, 'text should not contain #{}, but it does:' + it.text);
-                        assert(it.subject.indexOf('#{') === -1, 'subject should not contain #{}, but it does:' + it.subject);
+                        _(Object.keys(it)).each((it, key) => {
+                            assert(it[key].indexOf('#{') === -1, key +' should not contain #{}, but it does:' + it.html);
+                        });
                     });
                     done();
                 });

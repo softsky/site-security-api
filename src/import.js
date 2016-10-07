@@ -6,9 +6,8 @@ const _ = require('lodash')
 , xml2js = require('xml2js');
 
 module.exports = function(options){
-    , seneca = require('seneca')()
-	      .use('entity');
-
+    const seneca = this;
+    
     this.add("role:import", (msg, done) => {
     	fs.readFile(`${options.report_path}/${msg.cmd}.xml`, function(err, data) {
     	    if(err){
