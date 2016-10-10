@@ -1,7 +1,7 @@
 'use strict';
 
 const _ = require('lodash')
-, dotenv = require('dotenv').config()
+, dotenv = require('dotenv').config({silent:true})
 , request = require('request')
 , validate = require('validate.js')
 , async = require('async')

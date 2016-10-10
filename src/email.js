@@ -1,5 +1,5 @@
 const _ = require('lodash')
-, dotenv = require('dotenv').config()
+, dotenv = require('dotenv').config({silent:true})
 , request = require('request')
 , qs = require('querystring')
 , async = require('async')
@@ -33,8 +33,7 @@ module.exports = function(options){
 				      }
 				  });
 			      }, done);
-			  } , () => {
-			      
+			  }, () => {			      
 			      setTimeout(loopDomains, 1);
 			  });
     };
