@@ -99,7 +99,7 @@ module.exports = function(options){
             return seneca.actAsync({role:'template', cmd:'render', action: action, object: user, locale: user.locale})
                 .then((result) => {
                     const mail = {
-                        from: '"SOFTSKY Support" <gutsal.arsen@softsky.com.ua>',
+                        from: '"Arsen A. Gutsal" <a.gutsal@softsky.com.ua>',
                         to: user.email, // sender address
                         bcc: msg.bcc,
                         subject: result.subject,
@@ -125,7 +125,6 @@ module.exports = function(options){
         Promise.all(sendCards)
             .catch((err) => respond(err))
             .then((results) => {
-                console.log('+++++RESULTS:', results);
                 respond(null, results);
             });
     });
