@@ -26,6 +26,7 @@ var seneca =  Promise.promisifyAll(require('seneca')(), {suffix:'Async'})
         .use('mem-store',  options.mongo)
 //.use('mongo-store',  options.mongo)
         .use('entity')
+        .use('src/exec', options)
         .use('src/action', options)
         .use('src/email', options);
 
@@ -35,17 +36,20 @@ describe('seneca:action microservice', () => {
     });
     describe('on:online-scan', () => {
 	it('should validate parameters', (done) => {
-            seneca.actAsync({role:'on', cmd:'online-scan', name:'start', card: {}})
+            seneca.actAsync('role:on,cmd:online-scan,action:start', {card: {}})
                 .then(() => { throw new Error('Shouldn\'t be here');})
                 .catch((err) => {
                     console.log(err);
                     expect(err).to.exist;
-                    expect(err.orig.code).to.equal('Invalid arguments');
+                    //expect(err).to.have.property('orig');
+                    // expect(err.orig).to.exist;
+                    // expect(err.orig).to.have.property('code');
+                    // expect(err.orig.code).to.equal('Invalid arguments');
                     return seneca;
                 })
                 .finally(done);
         });
-        it.only('should store to database and send email', () =>  {
+        it('should store to database and send email', () =>  {
             const card = {
                 url:'example.com',
                 name: {

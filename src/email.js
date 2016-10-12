@@ -5,6 +5,7 @@ const _ = require('lodash')
 , async = require('async')
 , verifier = require('email-verify')
 , Promise = require('bluebird')
+, validate = require('validate.js')
 , nodemailer = require('nodemailer')
 , EmailTemplate = require('email-templates').EmailTemplate
 , path = require('path')
@@ -48,42 +49,85 @@ module.exports = function(options){
     });
     
 
-    this.add({role:'notify', cmd:'email'}, (msg, done) => {
-        var user = msg.user?msg.user:msg.req$.body;
-        var users = msg.users?msg.users:_.isArray(user)?user:[user];
+    this.add('role:notify, cmd:email', (msg, respond) => {
+        var user = msg.user || (msg.req?msg.req$.body:undefined);
+        if(!user) {
+            return; // FIXME make logic more clear
+        }
+        if(user && _.isObject(user.name) === false){
+            const splitted = user.name.split(/\ /);
+            user.name = {
+                first: splitted[0],
+                last: splitted[1]
+            };
+        }
+        const v = validate(user, {
+            'url': {
+                presence: false
+            },
+            'name.first': {
+                presence: true
+            },
+            'name.last':{
+                presence: true
+            },
+            email: {
+                presence: true,
+                email: true
+            },
+            'subject':{
+                presence: false
+            },
+            'message':{
+                presence: false
+            }            
+        });
+        
+        if(v){
+            console.log(v);
+            // something is wrong
+            respond(null, {status: 'error', reason: {msg: 'Invalid arguments', reason:v }});
+        };
+
+        var users = msg.users || _.isArray(user)?user:[user];
         var action = msg.action;
 
         var sendCards = users.map((user) => {
             var dir =  path.join(templateDir, action);
             var newsletter = new EmailTemplate(dir);
 
-            seneca.act({role:'template', cmd:'render', action: action, object: user, locale: user.locale}, (err, result) => {
-                const mail = {
-                    from: '"SOFTSKY Support" <gutsal.arsen@softsky.com.ua>',
-                    to: user.email, // sender address
-                    bcc: msg.bcc,
-                    subject: result.subject,
-                    text: result.text,
-                    html: result.html,
-                    attachments: msg.attachments
-                };
+            return seneca.actAsync({role:'template', cmd:'render', action: action, object: user, locale: user.locale})
+                .then((result) => {
+                    const mail = {
+                        from: '"SOFTSKY Support" <gutsal.arsen@softsky.com.ua>',
+                        to: user.email, // sender address
+                        bcc: msg.bcc,
+                        subject: result.subject,
+                        text: result.text,
+                        html: result.html,
+                        attachments: msg.attachments
+                    };
 
-                return nodemailerTransport.sendMail(mail,  (err, responseStatus) => { 
-                    if (err) {
-                        console.error(err);
-                        //done(err);
-                    } else {
-                        responseStatus.response = responseStatus.response.toString('utf-8');
-                        //done(null, responseStatus.response);
-                    }
+                    return new Promise((resolve, reject) => {
+                        nodemailerTransport.sendMail(mail,  (err, responseStatus) => { 
+                            if (err) {
+                                console.log('-------------- ERR:', err);
+                                reject(err);
+                            } else {
+                                responseStatus.response = responseStatus.response.toString('utf-8');
+                                resolve(responseStatus);
+                            }
+                        });                        
+                    });
                 });
-                
-            });
         });
 
         Promise.all(sendCards)
-            .catch(done)
-            .then(_.curry(done)(null));
+            .catch((err) => respond(err))
+            .then((results) => {
+                console.log('+++++RESULTS:', results);
+                respond(null, results);
+            });
     });
         
     this.add({role:'discover', cmd:'email'}, function(msg, done){

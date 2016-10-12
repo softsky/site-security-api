@@ -59,52 +59,56 @@ describe('seneca:exec microservice', () => {
 	//     });	    
 	// });
 	
-	it.only('should execute normally and return the result', (done) => {
+	it('should execute normally and return the result', (done) => {
 	    var cb = (result) => {
 		console.log('DONE:', result);
 		done();		
 	    };
-	    seneca.act({role:'run', cmd:'execute', name:'sleep', time: 15, done: cb}, (err, result) => {
+	    seneca.act({role:'run', cmd:'execute', name:'sleep', time: 1, done: cb}, (err, result) => {
 		expect(err).to.be.null;
 		expect(result).to.be.not.null;
-		expect(result.status).to.equal('scheduled');
+		expect(result).to.have.property('procid');
+		expect(result).to.have.property('name');
 		console.log(result);
+                done();
 	    });
-	}).timeout(16000);
-
-	it('should execute tasks in parallel', (done) => {
-	    var num = 0;
-	    const cb = (result) => {
-		console.log('Num:', num);
-		if(++num === 7){
-		    done();
-		}
-	    }
-	    , runOneMore = (result)  => {
-		cb(result);		
-		seneca.act({role:'run', cmd:'execute', name:'sleep', time: 1, done: cb}, (err, result) => {
-		    console.log('Queued:', result);		   
-		});
-	    };
-	    
-	    seneca.act({role:'run', cmd:'execute', name:'sleep', time: 6, done: cb}, (err, result) => {
-		    console.log('Queued:', result);
-		seneca.act({role:'run', cmd:'execute', name:'sleep', time: 4, done: runOneMore}, (err, result) => {
-		    console.log('Queued:', result);
-		});
-		seneca.act({role:'run', cmd:'execute', name:'sleep', time: 2, done: runOneMore}, (err, result) => {
-		    console.log('Queued:', result);
-		});
-		seneca.act({role:'run', cmd:'execute', name:'sleep', time: 1, done: runOneMore}, (err, result) => {
-		    console.log('Queued:', result);
-		});
-	    });
-
-	}).timeout(7000);
-
-	it('should properly scan through CMS', (done) => {
-	    seneca.act({role:'exec', cmd:'scan', type:'fast'})
 	});
+
+	// it('should execute tasks in parallel', (done) => {
+	//     var num = 0;
+	//     const cb = (result) => {
+	// 	console.log('Num:', num);
+	// 	if(++num === 7){
+	// 	    done();
+	// 	}
+	//     }
+	//     , runOneMore = (result)  => {
+	// 	cb(result);		
+	// 	seneca.act({role:'run', cmd:'execute', name:'sleep', time: 1, done: cb}, (err, result) => {
+	// 	    console.log('Queued:', result);		   
+	// 	});
+	//     };
+	    
+	//     seneca.act({role:'run', cmd:'execute', name:'sleep', time: 6, done: cb}, (err, result) => {
+	// 	    console.log('Queued:', result);
+	// 	seneca.act({role:'run', cmd:'execute', name:'sleep', time: 4, done: runOneMore}, (err, result) => {
+	// 	    console.log('Queued:', result);
+	// 	});
+	// 	seneca.act({role:'run', cmd:'execute', name:'sleep', time: 2, done: runOneMore}, (err, result) => {
+	// 	    console.log('Queued:', result);
+	// 	});
+	// 	seneca.act({role:'run', cmd:'execute', name:'sleep', time: 1, done: runOneMore}, (err, result) => {
+	// 	    console.log('Queued:', result);
+	// 	});
+	//     });
+
+	// }).timeout(7000);
+
+	// it('should properly scan through CMS', (done) => {
+	//     seneca.actAsync('role:exec, cmd:scan', {type:'fast'})
+        //         .catch(done)
+        //         .then((restuls) => done(null, results));
+	// });
     });
 
 });

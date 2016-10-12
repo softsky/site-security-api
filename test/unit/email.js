@@ -45,24 +45,22 @@ describe('seneca:email microservice', () => {
                             && fs.statSync(path.join(srcPath,file)).isDirectory());
 
             _(directories).each((it) => {
-                seneca.act({role:'template', cmd:'render', name: it, object: user, locale: user.locale}, (err, result) => {
-                    if(err){
-                        done(err);
-                    }
-                    // making sure HTML is valid
-                    parseString(result.html)
-                        .catch((err) => {
-                            console.log('',err);
-                            done(err);
-                        })
-                        .then((it) => {
-                            console.log(it);
-                            const filtered =_(it).filter((it, key) => (key[0] != '_') && (key[0] === key[0].toUpperCase())).value();
-                            console.log(filtered);
-                            expect(filtered.length).to.equal(0, 'Found upercased tags:' + JSON.stringify(filtered));
-                            
-                        });                    
-                });                
+                seneca.actAsync('role:template,cmd:render', {object: user, locale: user.locale, action:it})
+                    .catch(done)
+                    .then((result) => {
+                        parseString(result.html)
+                            .catch((err) => {
+                                console.log('',err);
+                                done(err);
+                            })
+                            .then((it) => {
+                                console.log(it);
+                                const filtered =_(it).filter((it, key) => (key[0] != '_') && (key[0] === key[0].toUpperCase())).value();
+                                console.log(filtered);
+                                expect(filtered.length).to.equal(0, 'Found upercased tags:' + JSON.stringify(filtered));
+                                
+                            });                                            
+                    });                
             });
             done();
         });
@@ -70,27 +68,17 @@ describe('seneca:email microservice', () => {
     });
     
     describe('notify', () => {
-        var users = [
-            // {
-            //     url: 'spaghetti.com',
-            //     email: 'info@softsky.com.ua',
-            //     name: {first: 'John', last: 'Rigatoni'}
-            // },{
-            //     url: 'spaghetti.com',
-            //     email: 'support@softsky.com.ua',
-            //     name: {first: 'Luca', last: 'Tortellini'}
-            // },
-            {
+        var user = {
                 url: 'softsky.com.ua',
                 email: 'scan@softsky.com.ua',
                 name: {first: 'Arsen', last: 'Gutsal'}
-            }                
-        ];
+        };
         
 	it('should properly handle email template', (done) => {
-
-            seneca.actAsync({role:'notify',cmd:'email',name:'online-scan-start', users:users})
+            seneca.actAsync('role:notify,cmd:email,action:online-scan-start', {user:user})
+                .catch(done)
                 .then((results) => {
+                    console.log('--- Results:', results);
                     _(results).each((it, idx) => {
                         console.log(it);
                         _(Object.keys(it)).each((it, key) => {

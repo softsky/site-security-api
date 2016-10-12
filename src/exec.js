@@ -41,35 +41,7 @@ class TaskQueue {
 module.exports = function api(options){
     var seneca = this;
     seneca.use('run', { batch: require('../conf/commands.js')(options)})
-	    // .use('run', { batch: {
-	    //     whatweb: {
-	    //         command: 'whatweb',
-	    //         args: [`--log-json=/dev/stdout`],
-	    //         cwd: __dirname
-	    //     },
-	    // }})
-	.use('src/import', options);
-
-    
-    this.add({role:'exec',cmd:'scan', type: 'fast'}, (msg, respond) => {
-	seneca
-	    .actAsync({role:'exec', cmd: 'whatweb'})
-	    .then((result) => {
-		console.log('RESULT', result);
-		respond(null, result);
-	    })
-	    .catch(respond);
-    });
-
-    // this.add({role:'exec', cmd:'sleep'}, (msg, respond) => {
-    // 	const spec = {
-    // 	    command: msg.cmd,
-    // 	    args: msg.args || [msg.time || 1]
-    // 	};
-    // 	console.log('Returning spec', spec);
-    // 	respond(null, spec);
-    // });
-
+	.use('src/import', options);   
     
     this.add({role:'exec', cmd:'whatweb'}, (msg, respond) => {
 	var tmp = require('tmp');

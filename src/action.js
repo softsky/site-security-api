@@ -24,19 +24,23 @@ module.exports = function(options){
                     Promise.promisify(seneca.private$.exports.Entity.prototype.save$);
     });
     this.add({role:'on', cmd:'online-scan', action:'start'}, (msg, respond) => {
-        var card = msg.card || msg.req$.body;
+        var card = msg.card || (msg.req$?msg.req$.body:undefined);
         //+++VALIDATE
         const v = validate(card, {
             'url': {
                 presence: true,
                 format: {
-                    pattern: /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/,
+                    pattern: /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$|^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/,
                     message: function(value, attribute, validatorOptions, attributes, globalOptions) {
                         return validate.format("^%{domain} is not a valid domain", {
                             domain: value
                         });
                     }
                 }
+            },
+            'email':{
+                'email': true,
+                'presence': true
             },
             'name.first': {
                 presence: true
@@ -55,8 +59,7 @@ module.exports = function(options){
                 format: {
                     pattern: /^[\w\d]{6}/
                 }
-            }
-            
+            }            
         });
         if(v){
             console.log(v);
@@ -104,7 +107,7 @@ module.exports = function(options){
                         filename: path.basename(file),
                         path: file
                     };
-                }).value();
+                }).last(); // FIME improve
 
                 console.log(attachments);
                 seneca.actAsync({role:'notify',cmd:'email', action: 'online-scan-finish'},
