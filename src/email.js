@@ -14,7 +14,7 @@ const _ = require('lodash')
 module.exports = function(options){
     var seneca = this;
     
-    const nodemailerTransport = options.nodemailerTransport || nodemailer.createTransport(process.env.SMTP_CONNECTION_STRING) || process.exit();
+    const nodemailerTransport = options.nodemailerTransport || process.exit();
     const domains = []
     ,  loopDomains = () => {
 	async.eachOfLimit(domains, 25,
@@ -50,8 +50,9 @@ module.exports = function(options){
     
 
     this.add('role:notify, cmd:email', (msg, respond) => {
-        var user = msg.user || (msg.req?msg.req$.body:undefined);
+        var user = msg.user || (msg.req$?msg.req$.body:undefined);
         if(!user) {
+            respond(null, {status:'error', msg:'user is not defined'});
             return; // FIXME make logic more clear
         }
         if(user && _.isObject(user.name) === false){
@@ -68,7 +69,7 @@ module.exports = function(options){
             'name.first': {
                 presence: true
             },
-            'name.last':{
+            'name.last': {
                 presence: true
             },
             email: {
@@ -80,7 +81,7 @@ module.exports = function(options){
             },
             'message':{
                 presence: false
-            }            
+            }
         });
         
         if(v){
@@ -95,11 +96,10 @@ module.exports = function(options){
         var sendCards = users.map((user) => {
             var dir =  path.join(templateDir, action);
             var newsletter = new EmailTemplate(dir);
-
             return seneca.actAsync({role:'template', cmd:'render', action: action, object: user, locale: user.locale})
                 .then((result) => {
                     const mail = {
-                        from: '"Arsen A. Gutsal" <a.gutsal@softsky.com.ua>',
+                        from: '"SOFTSKY Site Security" <gutsal.arsen@softsky.com.ua>',
                         to: user.email, // sender address
                         bcc: msg.bcc,
                         subject: result.subject,
@@ -114,7 +114,7 @@ module.exports = function(options){
                                 console.log('-------------- ERR:', err);
                                 reject(err);
                             } else {
-                                responseStatus.response = responseStatus.response.toString('utf-8');
+                                //responseStatus.response = responseStatus.response.toString('utf-8');
                                 resolve(responseStatus);
                             }
                         });                        
@@ -123,10 +123,7 @@ module.exports = function(options){
         });
 
         Promise.all(sendCards)
-            .catch((err) => respond(err))
-            .then((results) => {
-                respond(null, results);
-            });
+            .then((results) => respond(null, results), (err) => respond(err));
     });
         
     this.add({role:'discover', cmd:'email'}, function(msg, done){

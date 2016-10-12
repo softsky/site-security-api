@@ -13,6 +13,18 @@ var report_path = process.env.REPORT_PATH || '/data';
 
 options.mongo.host = host.replace(/\/\//,''); options.mongo.port = port; //FIXME use destructuring assignments
 options.nodemailerTransport = nodemailer.createTransport(process.env.SMTP_CONNECTION_STRING);
+// options.nodemailerTransport = nodemailer.createTransport({
+//     transport: 'smtp',    
+//     host: process.env.SES_SMTP_HOST,
+//     port: process.env.SES_SMTP_PORT,
+//     auth: {
+//         user: process.env.SES_SMTP_USERNAME,
+//         pass: process.env.SES_SMTP_PASSWORD        
+//     },
+//     secure: true,
+//     rateLimit: 1,
+//     maxMessages: 100
+// });
 
 options.report_path = report_path;
 console.log(options.mongo);
@@ -30,7 +42,6 @@ var Promise = require('bluebird')
     .use('src/email', options)
     .use('src/action', options)
     .use('src/exec', options);
-
 
 var app = require('express')()
  	.use(require('body-parser').json())

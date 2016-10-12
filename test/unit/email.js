@@ -74,7 +74,7 @@ describe('seneca:email microservice', () => {
                 name: {first: 'Arsen', last: 'Gutsal'}
         };
         
-	it('should properly handle email template', (done) => {
+	it('should properly handle online-scan-start', (done) => {
             seneca.actAsync('role:notify,cmd:email,action:online-scan-start', {user:user})
                 .catch(done)
                 .then((results) => {
@@ -88,5 +88,26 @@ describe('seneca:email microservice', () => {
                     done();
                 });
         });
+
+	it('should properly handle contact-requested', (done) => {
+            user = _.extend(user, {
+                subject: 'Some subject',
+                message: 'Some message'
+            });
+            seneca.actAsync('role:notify,cmd:email,action:contact-request', {user:user})
+                .catch(done)
+                .then((results) => {
+                    expect(results).to.have.length(1);
+                    console.log('--- Results:', results);
+                    _(results).each((it, idx) => {
+                        console.log(it);
+                        _(Object.keys(it)).each((it, key) => {
+                            assert(it[key].indexOf('#{') === -1, key +' should not contain #{}, but it does:' + it.html);
+                        });
+                    });
+                    done();
+                });
+        });
+        
     });
 });
