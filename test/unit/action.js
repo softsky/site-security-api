@@ -62,14 +62,28 @@ describe('seneca:action microservice', () => {
                 'coupon':'XXX000'
             };
 
-            const c$ = seneca.make$('customer'), s$ = seneca.make$('scan');
+            const c$ = seneca.make$('customer')
+            , s$ = seneca.make$('scan');
 
-            let cid;
+            let cid
+            , mails = [];
+            // mocking nodemailerTransport.sendMail
+            options.nodemailerTransport.sendMail = (mail, cb) => {
+                console.log('+++++RESULTS:', mail);
+                cb(null, {response:'OK'});
+                mails.push(mail);
+            };
+           
             return Promise.all([
                 expect(c$.listAsync()).to.eventually.have.length(0),
                 expect(s$.listAsync()).to.eventually.have.length(0)
             ])
+                .then(() => expect(mails).to.have.length(0))
                 .then(() => seneca.actAsync({role:'on', cmd:'online-scan', action:'start'}, {card: card}))
+                .then((r) => {
+                    expect(mails).to.have.length(1);
+                    return r;
+                })
                 .then((r) => expect(r).to.be.deep.equal({status:'scheduled'}))
                 .then(() => Promise.all([c$.listAsync(), s$.listAsync()]))
                 .then(([c,s]) => {
