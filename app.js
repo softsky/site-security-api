@@ -57,7 +57,13 @@ var Promise = require('bluebird')
 
 var app = require('express')()
  	.use(require('body-parser').json())
- 	.use( seneca.export('web') );
+ 	.use(seneca.export('web'))
+        .use('/ref/generate/linkedin', (req, res, next) => {
+            var ref = req.query;
+            console.log(ref);
+            res.redirect('mailto:gutsal.arsen@softsky.com.ua?subject=bestSubject&body=Hiall');
+            next();
+        });
 
 var httpServer = http.createServer(app);
 var credentials = {key: privateKey, cert: certificate};
