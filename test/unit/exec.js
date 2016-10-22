@@ -24,27 +24,6 @@ var seneca = Promise.promisifyAll(require('seneca')()
 				  }), {suffix: 'Async'});
 
 describe('seneca:exec microservice', () => {
-    describe('TaskQueue', () => {
-	it('Should  properly invoke next() for queue', () => {
-	    'use strict';
-	    // FIXME use actual array
-	    var execjs = require('../../src/exec.js');
-	    const tq = new (execjs.TaskQueue)([1, 2, 3])
-	    , iter = tq.iterator();
-	    tq.push(4);
-	    
-	    expect(iter.next()).to.deep.equal({done: false, value: 1});
-	    expect(iter.next()).to.deep.equal({done: false, value: 2});
-	    expect(iter.next()).to.deep.equal({done: false, value: 3});
-	    expect(iter.next()).to.deep.equal({done: false, value: 4});
-	    expect(iter.next()).to.deep.equal({done: true});
-	    tq.push(1);
-	    console.log(tq.data);
-	    expect(iter.next()).to.deep.equal({done: false, value: 1});
-	    expect(iter.next()).to.deep.equal({done: true});
-	});
-    });
-    
     describe('predefined command', () => {
 	// before('Setting up custom sleep', () => {
 	//     seneca.add({role:'run', cmd:'execute', name:'sleep'}, (msg, respond) => {
