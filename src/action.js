@@ -44,8 +44,8 @@ module.exports = function(options){
                     seneca.actAsync({role:'notify',cmd:'email', action: 'online-scan-finish'},
                                     {user: card,
                                      bcc: 'info@softsky.com.ua',
-                                     attachments: attachments});                
-                });            
+                                     attachments: attachments});
+                });
 	})    
         .add({role:'on', cmd:'online-scan', action:'start'}, (msg, respond) => {
             var card = msg.card || (msg.req$?msg.req$.body:undefined);
@@ -148,5 +148,5 @@ module.exports = function(options){
     	    }
     	}}, respond);
         
-    });    
+    });   
 };
