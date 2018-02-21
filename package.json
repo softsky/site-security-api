@@ -6,6 +6,9 @@
     "start": "node app.js",
     "test": "mocha --watch --recursive"
   },
+  "engines": {
+    "node": "8.9.4"
+  }
   "dependencies": {
     "async": "^2.0.0",
     "bluebird": "^3.4.6",
@@ -26,6 +29,7 @@
     "lodash": "^4.13.1",
     "mongoose": "^4.5.10",
     "neo-async": "^2.0.0",
+    "node-linkedin": "^0.5.4",
     "nodemailer": "^2.6.4",
     "path": "^0.12.7",
     "querystring": "^0.2.0",

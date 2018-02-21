@@ -1,7 +1,7 @@
 #FROM softsky/kali-linux-full
-FROM menzo/sn1per-docker
+FROM softsky/sn1per-docker
 
-MAINTAINER Arsen A.Gutsal <gutsal.arsen@softsky.com.ua>
+MAINTAINER Arsen A.Gutsal <a.gutsal@softsky.com.ua>
 
 ENV NVM_DIR /usr/local/nvm
 ENV NODE_VERSION 6.3.1
@@ -62,5 +62,9 @@ COPY email-templates/ /app/email-templates/
 # CMD script -q -c "tmux start-server \; set-option -g default-terminal xterm \;\ 
 #     	      	 new -s $(echo ${SCAN_DOMAIN}|sed -e s/\\\./_/g) \;\ 
 # 		 new-window bash -c \"node /app/app.js\"" /dev/null
+
+VOLUME "/tmp/.X11-unix /tmp/.X11-unix"
+VOLUME "/usr/share/sniper/loot /home/archer/tmp/loot"
+ENV DISPLAY $DISPLAY
 
 CMD ["node", "/app/app.js"]
