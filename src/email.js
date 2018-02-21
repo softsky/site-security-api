@@ -99,7 +99,7 @@ module.exports = function(options){
             return seneca.actAsync({role:'template', cmd:'render', action: action, object: user, locale: user.locale})
                 .then((result) => {
                     const mail = {
-                        from: '"SOFTSKY Site Security" <a.gutsal@softsky.com.ua>',
+                        from: '"SOFTSKY Site Security" <gutsal.arsen@softsky.com.ua>',
                         to: user.email, // sender address
                         bcc: msg.bcc,
                         subject: result.subject,

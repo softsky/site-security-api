@@ -9,9 +9,11 @@ var privateKey  = fs.readFileSync(__dirname + '/sslcert/server.key', 'utf8');
 var certificate = fs.readFileSync(__dirname + '/sslcert/server.crt', 'utf8');
 
 var options = require('./src/options.json');
-var [mongo_protocol, mongo_host, mongo_port] = (process.env.MONGODB_PORT || "tcp://localhost:27017").split(/\:\/\/|\:/),
-    [redis_protocol, redis_host, redis_port] = (process.env.REDIS_PORT || 'tcp://127.0.0.1:6379').split(/\:\/\/|\:/);
+var [mongo_protocol, mongo_host, mongo_port] = (process.env.MONGODB_PORT || "tcp://mongo:27017").split(/\:\/\/|\:/),
+    [redis_protocol, redis_host, redis_port] = (process.env.REDIS_PORT || 'tcp://redis:6379').split(/\:\/\/|\:/);
 var report_path = process.env.REPORT_PATH || '/data';
+
+
 
 options.mongo = _.extend(options.mongo, {
     host: mongo_host,
@@ -34,7 +36,7 @@ options.nodemailerTransport = nodemailer.createTransport(process.env.SMTP_CONNEC
 options.report_path = report_path;
 console.log(options.mongo);
 
-const PORT = parseInt(process.env.NODE_PORT) || 3001;
+const PORT = parseInt(process.env.NODE_PORT || process.env.PORT) || 3001;
 
 var Promise = require('bluebird')
 , seneca = Promise.promisifyAll(require('seneca')())
@@ -50,12 +52,15 @@ var Promise = require('bluebird')
         .use('entity', options)
         .use('mongo-store', options.mongo)
         .use('src/email', options)
+        .use('src/social/linkedin', options)
         .use('src/action', options)
         .use('src/exec', options)
         .use('src/health', options)
-        .listen( {type:'redis-queue'} );
+        .listen( {type:'redis-queue'} ),
+    express = require('express');
 
-var app = require('express')()
+
+var app = express()
  	.use(require('body-parser').json())
  	.use(seneca.export('web'))
         .use('/ref/generate/linkedin', (req, res, next) => {

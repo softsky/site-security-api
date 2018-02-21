@@ -37,7 +37,7 @@ module.exports = function(options){
                             filename: path.basename(file),
                             path: file
                         };
-                    }).last(); // FIME improve
+                    }).last(); // FIXME improve
 
                     seneca.log.info('Sending report for:' + card.url + ' to ' + card.email, attachments);
                     seneca.log.debug('Attachments:', attachments);

@@ -1,0 +1,40 @@
+profiles use full_audit
+
+http-settings
+set user_agent softsky-security-audit-platform
+#set basic_auth_domain pro.skilling.com
+#set basic_auth_user propero
+#set basic_auth_passwd forex2016
+set headers_file /home/dev/api/copyables/headers.txt
+set url_parameter https://pro.skilling.com/
+#set proxy_address 192.168.0.61
+set proxy_port 8080
+back
+target set target https://pro.skilling.com:443
+
+plugins
+output console,text_file,xml_file,export_requests
+output config text_file
+set output_file /data/reports/pro.skilling.com-w3af.txt
+back
+output config xml_file
+set output_file /data/reports/pro.skilling.com-w3af.xml
+back
+output config export_requests
+set output_file /data/reports/pro.skilling.com-requests.b64
+back
+
+# auth detailed
+# auth config detailed
+# set auth_url https://pro.skilling.com/api/authentication/customers/password/verify
+# set username_field principal
+# set password_field password
+# set username support@softsky.com.ua
+# set password aKJLKjfsdf1
+# set check_url https://pro.skilling.com/eu-en/myAccounto
+# set check_string password
+# set data_format {"u%":"%U","%p":"%P"}
+# back
+back
+
+#start

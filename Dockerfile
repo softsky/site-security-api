@@ -63,8 +63,8 @@ COPY email-templates/ /app/email-templates/
 #     	      	 new -s $(echo ${SCAN_DOMAIN}|sed -e s/\\\./_/g) \;\ 
 # 		 new-window bash -c \"node /app/app.js\"" /dev/null
 
-VOLUME "/tmp/.X11-unix /tmp/.X11-unix"
-VOLUME "/usr/share/sniper/loot /home/archer/tmp/loot"
+VOLUME "/tmp/.X11-unix:/tmp/.X11-unix"
+VOLUME "/usr/share/sniper/loot:/home/archer/tmp/loot"
 ENV DISPLAY $DISPLAY
 
 CMD ["node", "/app/app.js"]

@@ -6,7 +6,7 @@ var mocha = require('mocha')
 , _ = require('lodash');
 
 var options = require('../../src/options.json');
-var [protocol, host, port] = (process.env.MONGODB_PORT || "tcp://localhost:27017").split(/\:/);
+var [protocol, host, port] = (process.env.MONGODB_PORT || "tcp://mongo:27017").split(/\:/);
 var report_path = '/data';
 options.mongo.host = host.replace(/\/\//,''); options.mongo.port = port; //FIXME use destructuring assignments
 options.report_path = report_path;
