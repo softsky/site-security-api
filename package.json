@@ -13,7 +13,7 @@
     "async": "^2.0.0",
     "bluebird": "^3.4.6",
     "body-parser": "^1.18.3",
-    "bson": "^1.0.5",P
+    "bson": "^1.0.5",
     "chairo": "^2.2.1",
     "dotenv": "^2.0.0",
     "email-templates": "^2.4.1",
