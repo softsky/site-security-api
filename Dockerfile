@@ -9,7 +9,7 @@ ENV NODE_ENV	 production
 ENV NODE_PORT	 3001
 ENV REPORT_PATH  /data
 
-RUN apt-get update && apt-get upgrade -y
+RUN apt-get update && apt-get upgrade -y --fix-missing
 
 #RUN apt-get install -y tmux htop whatweb sqlmap nmap w3af skipfish nikto joomscan wpscan mc xsltproc ccze libswitch-perl sslscan python-pip && pip install droopescan
 RUN apt-get install -y whatweb joomscan wpscan python-pip && pip install droopescan
